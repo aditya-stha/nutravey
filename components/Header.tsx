@@ -1,0 +1,92 @@
+import Link from "next/link";
+import Logo from "@/components/Logo";
+import ThemeToggle from "@/components/ThemeToggle";
+import MobileMenu from "@/components/MobileMenu";
+
+const navLinks = [
+  { label: "Shop", href: "/shop" },
+  { label: "Discovery", href: "/discovery" },
+  { label: "About", href: "/about" },
+  { label: "Standards", href: "/standards" },
+];
+
+export default function Header() {
+  return (
+    <header
+      className="site-header"
+      style={{ backgroundColor: "var(--color-surface-header)" }}
+    >
+      <div
+        className="content-rail flex items-center justify-between"
+        style={{ height: "64px" }}
+      >
+        {/* Wordmark */}
+        <Link
+          href="/"
+          style={{ color: "var(--color-ink)", lineHeight: 0 }}
+          aria-label="Nutravey — home"
+        >
+          <Logo style={{ height: "24px" }} />
+        </Link>
+
+        {/* Desktop: nav + theme toggle */}
+        <div className="site-header-desktop">
+          <nav aria-label="Primary navigation">
+            <ul
+              className="flex items-center"
+              style={{ gap: "40px", listStyle: "none", margin: 0, padding: 0 }}
+            >
+              {navLinks.map(({ label, href }) => (
+                <li key={label}>
+                  <Link
+                    href={href}
+                    className="mono-cta transition-opacity duration-200 hover:opacity-50"
+                    style={{ color: "var(--color-ink)" }}
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <ThemeToggle />
+        </div>
+
+        {/* Mobile: hamburger trigger (overlay rendered conditionally) */}
+        <div className="site-header-mobile">
+          <MobileMenu links={navLinks} />
+        </div>
+      </div>
+
+      {/* Hairline bottom border */}
+      <div
+        style={{
+          height: "0.4px",
+          backgroundColor: "var(--color-rule)",
+        }}
+      />
+
+      <style>{`
+        .site-header {
+          position: sticky;
+          top: 0;
+          z-index: 50;
+          width: 100%;
+        }
+
+        /* Mobile-first: hide desktop cluster, show mobile trigger */
+        .site-header-desktop { display: none; }
+        .site-header-mobile { display: inline-flex; align-items: center; }
+
+        @media (min-width: 768px) {
+          .site-header-desktop {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+          }
+          .site-header-mobile { display: none; }
+        }
+      `}</style>
+    </header>
+  );
+}
