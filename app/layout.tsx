@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
+import Script from "next/script";
 import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 import Header from "@/components/Header";
@@ -34,6 +35,24 @@ export const viewport: Viewport = {
   ],
 };
 
+/* GA4, loaded only when a measurement id is configured. `lib/analytics.ts`
+   feeds it events; without the id the site sends nothing to Google. */
+function GoogleAnalytics() {
+  const gaId = process.env.NEXT_PUBLIC_GA_ID;
+  if (!gaId) return null;
+  return (
+    <>
+      <Script
+        src={`https://www.googletagmanager.com/gtag/js?id=${gaId}`}
+        strategy="afterInteractive"
+      />
+      <Script id="ga-init" strategy="afterInteractive">
+        {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${gaId}');`}
+      </Script>
+    </>
+  );
+}
+
 // Runs synchronously before body content paints, so the correct CSS vars
 // are in effect before the first frame — no light-flash on dark loads.
 const themeInitScript = `(function(){try{var t=localStorage.getItem('nutravey-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
@@ -58,6 +77,7 @@ export default function RootLayout({
           <Footer />
         </ShopProviders>
         <Analytics />
+        <GoogleAnalytics />
       </body>
     </html>
   );

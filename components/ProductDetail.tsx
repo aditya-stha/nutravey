@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
@@ -9,6 +9,7 @@ import type { Product } from "@/lib/products";
 import { products } from "@/lib/products";
 import IngredientGrid from "@/components/IngredientGrid";
 import { isPreLaunch } from "@/lib/shopify-config";
+import { track } from "@/lib/analytics";
 
 interface ProductDetailProps {
   product: Product;
@@ -35,6 +36,7 @@ export default function ProductDetail({
   const [pdpName, setPdpName] = useState("");
   const [pdpIsSubmitting, setPdpIsSubmitting] = useState(false);
   const [pdpTicket, setPdpTicket] = useState<{ id: string; name: string; email: string; flavor: string } | null>(null);
+  const [pdpError, setPdpError] = useState<string | null>(null);
   const [pdpTilt, setPdpTilt] = useState({ x: 0, y: 0 });
   const [showPdpForm, setShowPdpForm] = useState(false);
 
@@ -49,20 +51,34 @@ export default function ProductDetail({
     setPdpTilt({ x: tiltX, y: tiltY });
   };
 
-  const handlePdpReserve = (e: React.FormEvent) => {
+  const handlePdpReserve = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pdpEmail || !pdpName) return;
+    if (!pdpEmail || !pdpName || pdpIsSubmitting) return;
     setPdpIsSubmitting(true);
-    setTimeout(() => {
-      const serial = `NVY-${product.id.slice(0, 2).toUpperCase()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    setPdpError(null);
+    try {
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: pdpName, email: pdpEmail, item: product.id }),
+      });
+      const json: { ok?: boolean; id?: string; error?: string } = await res.json();
+      if (!res.ok || !json.ok || !json.id) {
+        setPdpError(json.error ?? "Something went wrong. Try again.");
+        return;
+      }
+      track("generate_lead", { item_id: product.slug, source: "pdp" });
       setPdpTicket({
-        id: serial,
+        id: json.id,
         name: pdpName,
         email: pdpEmail,
         flavor: product.name,
       });
+    } catch {
+      setPdpError("Couldn't reach the reservation service. Try again.");
+    } finally {
       setPdpIsSubmitting(false);
-    }, 1200);
+    }
   };
 
   const { linesAdd, status, checkoutUrl } = useCart();
@@ -71,16 +87,33 @@ export default function ProductDetail({
   const cartBusy = status === "creating" || status === "updating";
   const purchasable = Boolean(variantId) && available;
 
+  useEffect(() => {
+    track("view_item", {
+      item_id: product.slug,
+      item_name: product.name,
+      price: product.price,
+      currency: "USD",
+    });
+  }, [product.slug, product.name, product.price]);
+
   /** Add the selected quantity to the Storefront cart. Returns true when the
    *  add was dispatched (used by Buy Now to then redirect to checkout). */
   function addToCart(): boolean {
     if (!variantId || !purchasable || cartBusy) return false;
     linesAdd([{ merchandiseId: variantId, quantity: qty }]);
+    track("add_to_cart", {
+      item_id: product.slug,
+      item_name: product.name,
+      quantity: qty,
+      price: product.price,
+      currency: "USD",
+    });
     return true;
   }
 
   function buyNow() {
     if (!addToCart()) return;
+    track("begin_checkout", { item_id: product.slug, source: "buy_now" });
     // `checkoutUrl` exists only once the cart has been created on the
     // Storefront. If it's ready, jump straight to Shopify checkout; otherwise
     // send the shopper to the cart page where the checkout link resolves.
@@ -271,6 +304,19 @@ export default function ProductDetail({
                               style={{ borderRadius: 0 }}
                             />
                           </div>
+                          {pdpError && (
+                            <p
+                              role="alert"
+                              className="mono-body text-[12px]"
+                              style={{
+                                color: product.accent,
+                                borderTop: "0.4px solid var(--color-rule)",
+                                paddingTop: "10px",
+                              }}
+                            >
+                              {pdpError}
+                            </p>
+                          )}
                           <button
                             type="submit"
                             disabled={pdpIsSubmitting}

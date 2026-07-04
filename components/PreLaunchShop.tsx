@@ -6,6 +6,7 @@ import Link from "next/link";
 import Script from "next/script";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { products, curation } from "@/lib/products";
+import { track } from "@/lib/analytics";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -90,6 +91,7 @@ export default function PreLaunchShop() {
         return;
       }
 
+      track("generate_lead", { item_id: selectedItem, source: "shop" });
       setTicket({
         id: json.id,
         name: name,

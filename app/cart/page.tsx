@@ -14,6 +14,7 @@ import type {
   ProductVariant,
 } from "@shopify/hydrogen-react/storefront-api-types";
 import { isShopifyConfigured, isPreLaunch } from "@/lib/shopify-config";
+import { track } from "@/lib/analytics";
 
 type Line = CartLine | ComponentizableCartLine;
 
@@ -152,6 +153,14 @@ export default function CartPage() {
             href={checkoutUrl}
             className="cart-checkout mono-cta"
             aria-busy={busy}
+            onClick={() =>
+              track("begin_checkout", {
+                value: Number(cost?.subtotalAmount?.amount ?? 0),
+                currency: cost?.subtotalAmount?.currencyCode ?? "USD",
+                items: totalQuantity ?? 0,
+                source: "cart",
+              })
+            }
           >
             {busy ? "Updating…" : "Checkout →"}
           </a>
