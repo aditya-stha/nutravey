@@ -120,7 +120,12 @@ export default function HoloTicket({
       <div className="flex flex-col gap-4 mb-8 text-left">
         <div>
           <p className="mono-label text-[8px] text-white/40 mb-0.5">ALLOCATED SLATE</p>
-          <p className="font-medium text-[15px]" style={{ color: accent }}>
+          {/* Lightened so dark accents (the bundle's oxblood) stay legible
+              on the near-black card. */}
+          <p
+            className="font-medium text-[15px]"
+            style={{ color: `color-mix(in srgb, ${accent} 55%, #FAFAFA)` }}
+          >
             {ticket.flavor}
           </p>
         </div>

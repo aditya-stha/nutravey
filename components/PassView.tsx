@@ -6,8 +6,10 @@ import HoloTicket from "@/components/HoloTicket";
 import { products, curation } from "@/lib/products";
 
 /* ─── Private pass view ─────────────────────────────────────────────────────
-   Renders a verified Ritual Pass: the holo ticket plus a live countdown to
-   launch. Reached only via the signed link from the reservation email. */
+   A verified Ritual Pass, presented like the artifact it is: a single
+   centered column — greeting, holo ticket, launch countdown. (Centered by
+   the user's explicit direction; this page is an artifact viewer, not an
+   editorial content block.) */
 
 interface Pass {
   id: string;
@@ -68,17 +70,17 @@ function Countdown({ accent }: { accent: string }) {
   ];
 
   return (
-    <div style={{ display: "flex", gap: "0" }}>
+    <div style={{ display: "inline-flex" }}>
       {cells.map((c, i) => (
         <div
           key={c.label}
           style={{
-            padding: "16px 22px",
+            padding: "16px 0",
+            width: "88px",
             borderTop: "0.4px solid var(--color-rule)",
             borderBottom: "0.4px solid var(--color-rule)",
             borderLeft: i === 0 ? "0.4px solid var(--color-rule)" : "none",
             borderRight: "0.4px solid var(--color-rule)",
-            minWidth: "86px",
           }}
         >
           <p
@@ -109,7 +111,15 @@ export default function PassView({ pass }: { pass: Pass }) {
       : (products.find((p) => p.id === pass.item)?.accent ?? curation.accent);
 
   return (
-    <div className="content-rail section-padding">
+    <div
+      className="content-rail section-padding"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        textAlign: "center",
+      }}
+    >
       <p className="mono-label" style={{ opacity: 0.5, marginBottom: "18px" }}>
         RITUAL PASS · VERIFIED
       </p>
@@ -117,12 +127,12 @@ export default function PassView({ pass }: { pass: Pass }) {
         style={{
           fontFamily: "var(--font-display)",
           fontWeight: 500,
-          fontSize: "clamp(40px, 6vw, 80px)",
+          fontSize: "clamp(36px, 5vw, 64px)",
           letterSpacing: "-0.03em",
           lineHeight: 0.98,
           color: "var(--color-ink)",
           marginBottom: "20px",
-          maxWidth: "720px",
+          maxWidth: "640px",
         }}
       >
         Your slot is held, {pass.name.split(" ")[0]}.
@@ -130,11 +140,11 @@ export default function PassView({ pass }: { pass: Pass }) {
       <p
         className="mono-body"
         style={{
-          fontSize: "15px",
+          fontSize: "14px",
           lineHeight: 1.7,
           color: "var(--color-ink-muted)",
-          maxWidth: "460px",
-          marginBottom: "56px",
+          maxWidth: "420px",
+          marginBottom: "48px",
         }}
       >
         This page is yours alone — the link is your key, so keep it private.
@@ -142,37 +152,33 @@ export default function PassView({ pass }: { pass: Pass }) {
         pre-launch discount.
       </p>
 
-      <div
+      <HoloTicket ticket={pass} accent={accent} />
+
+      <p
+        className="mono-label"
         style={{
-          display: "flex",
-          flexWrap: "wrap",
-          gap: "clamp(40px, 6vw, 96px)",
-          alignItems: "flex-start",
+          color: "var(--color-ink)",
+          opacity: 0.5,
+          marginTop: "56px",
+          marginBottom: "16px",
         }}
       >
-        <HoloTicket ticket={pass} accent={accent} />
-        <div>
-          <p
-            className="mono-label"
-            style={{ color: "var(--color-ink)", opacity: 0.5, marginBottom: "16px" }}
-          >
-            LAUNCH IN
-          </p>
-          <Countdown accent={accent} />
-          <p
-            className="mono-body"
-            style={{
-              fontSize: "12px",
-              color: "var(--color-ink-faint)",
-              marginTop: "24px",
-              maxWidth: "340px",
-            }}
-          >
-            Reserved to {pass.email}. Reply to your confirmation email to
-            cancel or change flavour.
-          </p>
-        </div>
-      </div>
+        LAUNCH IN
+      </p>
+      <Countdown accent={accent} />
+
+      <p
+        className="mono-body"
+        style={{
+          fontSize: "12px",
+          color: "var(--color-ink-faint)",
+          marginTop: "32px",
+          maxWidth: "360px",
+        }}
+      >
+        Reserved to {pass.email}. Reply to your confirmation email to cancel
+        or change flavour.
+      </p>
     </div>
   );
 }

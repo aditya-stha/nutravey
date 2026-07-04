@@ -45,6 +45,9 @@ test("waitlist API accepts a reservation and issues a working pass link", async 
   page,
 }) => {
   const res = await request.post("/api/waitlist", {
+    // Unique client IP per run so repeated local runs against a reused dev
+    // server don't trip the per-IP rate limit.
+    headers: { "x-forwarded-for": `10.1.${Date.now() % 250}.${process.pid % 250}` },
     data: {
       name: "Smoke Test",
       email: `smoke-${Date.now()}@example.com`,
@@ -71,6 +74,7 @@ test("a tampered pass token is rejected", async ({ page }) => {
 
 test("waitlist API rejects a bad payload", async ({ request }) => {
   const res = await request.post("/api/waitlist", {
+    headers: { "x-forwarded-for": `10.2.${Date.now() % 250}.${process.pid % 250}` },
     data: { name: "", email: "not-an-email", item: "nope" },
   });
   expect(res.status()).toBe(400);
