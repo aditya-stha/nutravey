@@ -35,11 +35,12 @@ export const viewport: Viewport = {
   ],
 };
 
-/* GA4, loaded only when a measurement id is configured. `lib/analytics.ts`
-   feeds it events; without the id the site sends nothing to Google. */
+/* GA4, loaded only when a measurement id is configured — and only in
+   production builds, so localhost sessions never pollute the funnel data.
+   `lib/analytics.ts` feeds it events; without the id nothing goes to Google. */
 function GoogleAnalytics() {
   const gaId = process.env.NEXT_PUBLIC_GA_ID;
-  if (!gaId) return null;
+  if (!gaId || process.env.NODE_ENV !== "production") return null;
   return (
     <>
       <Script
