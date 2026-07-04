@@ -36,6 +36,9 @@ export default function GlobalError({
             >
               Try again
             </button>
+            {/* Plain <a>: the root layout (and router) just crashed — a full
+                page load is the only reliable way out. */}
+            {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/" className="system-home-link mono-cta">
               Go home →
             </a>

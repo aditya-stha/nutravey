@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
 import Script from "next/script";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { products, curation } from "@/lib/products";
@@ -33,7 +32,6 @@ const atmospheres: Record<string, { bg: string; textAccent: string }> = {
 export default function PreLaunchShop() {
   const reduce = useReducedMotion();
   const [selectedItem, setSelectedItem] = useState<string>("strawberry"); // strawberry | lychee | lemon | bundle
-  const [selectedIngredient, setSelectedIngredient] = useState<string>("coconut"); // coconut | cherry | magnesium | theanine
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [honeypot, setHoneypot] = useState("");
@@ -120,15 +118,6 @@ export default function PreLaunchShop() {
         backgroundAttachment: "fixed"
       }}
     >
-      {/* ── Squircle definition ─────────────────────────────────────────── */}
-      <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
-        <defs>
-          <clipPath id="squircle-clip" clipPathUnits="objectBoundingBox">
-            <path d="M 0.05,0 L 0.95,0 C 0.978,0 1,0.022 1,0.05 L 1,0.95 C 1,0.978 0.978,1 0.95,1 L 0.05,1 C 0.022,1 0,0.978 0,0.95 L 0,0.05 C 0,0.022 0.022,0 0.05,0 Z" />
-          </clipPath>
-        </defs>
-      </svg>
-
       {/* ── Page Header Section ────────────────────────────────────────── */}
       <section className="content-rail" style={{ paddingTop: "clamp(64px, 8vw, 96px)", paddingBottom: "clamp(36px, 4vw, 56px)" }}>
         <p className="mono-label" style={{ opacity: 0.5, marginBottom: "18px" }}>
@@ -204,7 +193,7 @@ export default function PreLaunchShop() {
             </div>
 
             {/* Spotlight Showcase */}
-            <div className="border border-[var(--color-rule)] p-10 md:p-12 relative overflow-hidden bg-[var(--color-surface-card)]" style={{ minHeight: "400px", boxShadow: "0 20px 60px rgba(15, 23, 42, 0.06)" }}>
+            <div className="border border-[var(--color-rule)] p-10 md:p-12 relative overflow-hidden bg-[var(--color-surface-card)]" style={{ minHeight: "400px" }}>
               <AnimatePresence mode="wait">
                 {selectedItem !== "bundle" && activeProduct ? (
                   <motion.div
@@ -215,7 +204,7 @@ export default function PreLaunchShop() {
                     transition={{ duration: 0.4, ease: EASE }}
                     className="flex flex-col md:flex-row gap-8 items-center"
                   >
-                    <div className="relative w-44 h-56 flex-shrink-0" style={{ clipPath: "url(#squircle-clip)" }}>
+                    <div className="relative w-44 h-56 flex-shrink-0">
                       <Image 
                         src={activeProduct.image} 
                         alt={activeProduct.name} 
@@ -260,7 +249,7 @@ export default function PreLaunchShop() {
                     transition={{ duration: 0.4, ease: EASE }}
                     className="flex flex-col md:flex-row gap-8 items-center"
                   >
-                    <div className="relative w-44 h-56 flex-shrink-0 bg-[var(--color-surface-warm)] flex items-center justify-center" style={{ clipPath: "url(#squircle-clip)" }}>
+                    <div className="relative w-44 h-56 flex-shrink-0 bg-[var(--color-surface-warm)] flex items-center justify-center border border-[var(--color-rule)]">
                       <span className="mono-label text-center opacity-40 p-4">Full Curation System</span>
                     </div>
                     <div className="flex-1">
@@ -276,7 +265,7 @@ export default function PreLaunchShop() {
                       <div className="flex items-baseline gap-3">
                         <span className="font-semibold text-2xl" style={{ color: atmospheres.bundle.textAccent }}>{curation.bundlePriceLabel}</span>
                         <span className="line-through opacity-40 text-sm">{curation.listPriceLabel}</span>
-                        <span className="mono-label text-[10px] px-2 py-0.5 bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-200 border border-green-300 dark:border-green-800">
+                        <span className="mono-label text-[10px] px-2 py-0.5 border border-[var(--color-rule)]" style={{ color: atmospheres.bundle.textAccent }}>
                           {curation.savingsLabel}
                         </span>
                       </div>
@@ -414,17 +403,6 @@ export default function PreLaunchShop() {
                       }}
                       className="border border-[var(--color-rule)] p-6 relative overflow-hidden flex flex-col justify-between"
                     >
-                      {/* Ticket Gloss Background Overlay */}
-                      <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
-                      <div 
-                        className="absolute w-48 h-48 rounded-full filter blur-[40px] opacity-40 pointer-events-none" 
-                        style={{
-                          background: activeAccent,
-                          top: "-20%",
-                          right: "-20%"
-                        }}
-                      />
-
                       {/* Header */}
                       <div className="flex justify-between items-start border-b border-white/10 pb-4 mb-6">
                         <div>
@@ -490,7 +468,7 @@ export default function PreLaunchShop() {
                     </div>
 
                     <p className="mono-body text-[11px] text-[var(--color-ink-muted)] mt-4 text-center">
-                      ✓ Reserved. We sent a validation pass to {ticket.email}.
+                      Reserved. Your slot is registered to {ticket.email}.
                     </p>
 
                     <button
@@ -508,225 +486,6 @@ export default function PreLaunchShop() {
         </div>
       </section>
 
-      {/* ── Brand Storytelling Section ── */}
-      <section className="bg-[var(--color-surface-warm)] border-t border-b border-[var(--color-rule)] my-24 py-28 lg:py-32">
-        <div className="content-rail">
-          <p className="mono-label text-center opacity-50 mb-10">THE NUTRAVEY PHILOSOPHY</p>
-          <h2 className="text-center mb-20 md:mb-28 lg:mb-32" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(32px, 4.5vw, 56px)", color: "var(--color-ink)", letterSpacing: "-0.02em" }}>
-            Pills are Yesterday.<br/>Sachets are Tomorrow.
-          </h2>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-14 lg:gap-20">
-            <div className="border border-[var(--color-rule)] p-10 lg:p-12 bg-[var(--color-surface)]">
-              <span className="mono-label text-xs block mb-6" style={{ color: atmospheres.strawberry.textAccent }}>01 / PURE CELLULAR UPTAKE</span>
-              <h3 className="text-xl mb-6">No Binders, Ever</h3>
-              <p className="mono-body text-[13px] text-[var(--color-ink-muted)] leading-relaxed">
-                Traditional multivitamin tablets are packed with silicon dioxide, magnesium stearate, and microcrystalline cellulose. Nutravey is raw soluble powder. Just pour into water and sip.
-              </p>
-            </div>
-
-            <div className="border border-[var(--color-rule)] p-10 lg:p-12 bg-[var(--color-surface)]">
-              <span className="mono-label text-xs block mb-6" style={{ color: atmospheres.lychee.textAccent }}>02 / OPTIMAL RATIO HYDRATION</span>
-              <h3 className="text-xl mb-6">Magnesium Glycinate</h3>
-              <p className="mono-body text-[13px] text-[var(--color-ink-muted)] leading-relaxed">
-                Most hydration packs dump cheap sodium and citric acids. We utilize high-absorption Magnesium Glycinate alongside clinical levels of Potassium and Sodium to lock in cellular hydration.
-              </p>
-            </div>
-
-            <div className="border border-[var(--color-rule)] p-10 lg:p-12 bg-[var(--color-surface)]">
-              <span className="mono-label text-xs block mb-6" style={{ color: atmospheres.lemon.textAccent }}>03 / TRIPLE LAB TESTING</span>
-              <h3 className="text-xl mb-6">Indisputable Purity</h3>
-              <p className="mono-body text-[13px] text-[var(--color-ink-muted)] leading-relaxed">
-                Every batch is triple-tested for heavy metals, yeast, and chemical pesticides. We publish all Certificates of Analysis (COAs) publicly to prove we build with absolute trust.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ── Active Ingredients Interactive Explorer ── */}
-      <section className="content-rail py-32 lg:py-36">
-        <p className="mono-label opacity-50 mb-10 text-center">UNDER THE MICROSCOPE</p>
-        <h2 className="text-center mb-20 md:mb-28" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(32px, 4vw, 48px)" }}>
-          Active Botanical Sourcing.
-        </h2>
-
-        <div className="border border-[var(--color-rule)] p-14 lg:p-16 bg-[var(--color-surface)] grid grid-cols-1 lg:grid-cols-12 gap-14 lg:gap-16 items-stretch">
-          
-          {/* Active Ingredients List */}
-          <div className="lg:col-span-4 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[var(--color-rule)] pb-10 lg:pb-0 lg:pr-12">
-            <div>
-              <p className="mono-body text-[13px] text-[var(--color-ink-muted)] mb-6">
-                Select an active compound to verify its primary biological purpose and organic origin.
-              </p>
-              <div className="flex flex-col gap-3">
-                {[
-                  { id: "coconut", name: "Coconut Water Extract", origin: "Organic Philippines" },
-                  { id: "cherry", name: "Acerola Cherry Extract", origin: "Northeastern Brazil" },
-                  { id: "magnesium", name: "Magnesium Glycinate", origin: "Biologically Chelated" },
-                  { id: "theanine", name: "L-Theanine", origin: "Japanese Green Tea" },
-                ].map(ing => (
-                  <button
-                    key={ing.id}
-                    onClick={() => setSelectedIngredient(ing.id)}
-                    className={`text-left py-3 px-4 mono-cta text-[12px] border transition-all flex justify-between items-center bg-neutral-50 dark:bg-neutral-900/50 ${
-                      selectedIngredient === ing.id ? "border-[var(--color-ink)]" : "border-transparent hover:border-[var(--color-rule)]"
-                    }`}
-                  >
-                    <span>{ing.name}</span>
-                    <span className="opacity-40 text-[9px]">{ing.origin}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-            
-            <div className="mt-10">
-              <span className="mono-label text-[9px] block opacity-40">STANDARD GUARANTEE</span>
-              <p className="text-[12px] mono-body text-[var(--color-ink-faint)]">
-                All components are non-GMO, gluten-free, vegan-friendly, and naturally sweetened.
-              </p>
-            </div>
-          </div>
-
-          {/* Ingredient Details Showcase */}
-          <div className="lg:col-span-8 flex flex-col justify-center pl-0 lg:pl-4">
-            <AnimatePresence mode="wait">
-              {selectedIngredient === "coconut" && (
-                <motion.div key="coconut" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-4">
-                  <span className="mono-label text-xs text-[#C52B56]">FULL-SPECTRUM ELECTROLYTES</span>
-                  <h4 style={{ fontSize: "24px" }}>Organic Coconut Water</h4>
-                  <p className="mono-body text-[14px] text-[var(--color-ink-muted)] leading-relaxed">
-                    Hydration relies on balance. Coconut water concentrate yields organic potassium in ratios that match human cellular fluid, helping nutrients cross the cell membrane efficiently.
-                  </p>
-                </motion.div>
-              )}
-              {selectedIngredient === "cherry" && (
-                <motion.div key="cherry" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-4">
-                  <span className="mono-label text-xs text-[#AA4198]">ANTIOXIDANT METABOLISM</span>
-                  <h4 style={{ fontSize: "24px" }}>Brazilian Acerola</h4>
-                  <p className="mono-body text-[14px] text-[var(--color-ink-muted)] leading-relaxed">
-                    Synthetic ascorbic acid is standard in cheap brands. We harvest Brazillian Acerola cherries to extract natural, bio-available Vitamin C complexed with natural bioflavonoids for high cellular absorption.
-                  </p>
-                </motion.div>
-              )}
-              {selectedIngredient === "magnesium" && (
-                <motion.div key="magnesium" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-4">
-                  <span className="mono-label text-xs text-[#C9A810]">MUSCLE & NERVE ADAPTATION</span>
-                  <h4 style={{ fontSize: "24px" }}>Chelated Magnesium Glycinate</h4>
-                  <p className="mono-body text-[14px] text-[var(--color-ink-muted)] leading-relaxed">
-                    Magnesium oxide can irritate the gastrointestinal tract. By chelating magnesium with the amino acid glycine, we create a stable salt that is gentle on the stomach and supports neural pathways.
-                  </p>
-                </motion.div>
-              )}
-              {selectedIngredient === "theanine" && (
-                <motion.div key="theanine" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-4">
-                  <span className="mono-label text-xs text-[#3D1322]">COGNITIVE CALM</span>
-                  <h4 style={{ fontSize: "24px" }}>Pure L-Theanine Extract</h4>
-                  <p className="mono-body text-[14px] text-[var(--color-ink-muted)] leading-relaxed">
-                    Extracted from premium Japanese green tea, L-Theanine crosses the blood-brain barrier to promote alpha brain waves, creating a quiet focus and sustained clarity without any mid-day crash.
-                  </p>
-                </motion.div>
-              )}
-              {/* Fallback case */}
-              {!["coconut", "cherry", "magnesium", "theanine"].includes(selectedIngredient) && (
-                <motion.div key="select-prompt" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-center py-12">
-                  <svg className="w-12 h-12 mx-auto opacity-20 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                  </svg>
-                  <p className="mono-body text-sm text-[var(--color-ink-faint)]">
-                    Please select an ingredient on the left to inspect its biological details.
-                  </p>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── Transparent Launch Timeline ── */}
-      <section className="content-rail py-32 lg:py-36">
-        <p className="mono-label opacity-50 mb-10 text-center">TRANSPARENCY TIMELINE</p>
-        <h2 className="text-center mb-20 md:mb-28" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(32px, 4vw, 48px)" }}>
-          Launch Sequence.
-        </h2>
-
-        <div className="relative border-l border-[var(--color-rule)] pl-8 max-w-2xl mx-auto flex flex-col gap-16">
-          
-          <div className="relative">
-            {/* Timeline Dot */}
-            <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 bg-green-500 rounded-full ring-4 ring-white dark:ring-[#2D0F2A]" />
-            <span className="mono-label text-[10px] text-green-600 block mb-1">STAGE 01 - DONE (JUNE 2026)</span>
-            <h4 className="text-[17px] mb-2 font-medium">Formulation Locking & Batch Certifications</h4>
-            <p className="mono-body text-[13px] text-[var(--color-ink-muted)]">
-              All recipe matrices for Strawberry Surge, Lychee Lush, and Lemon Zest locked. Triple-stage laboratory tests completed with zero heavy metals.
-            </p>
-          </div>
-
-          <div className="relative">
-            {/* Timeline Dot */}
-            <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 bg-yellow-500 rounded-full ring-4 ring-white dark:ring-[#2D0F2A]" />
-            <span className="mono-label text-[10px] text-yellow-600 block mb-1">STAGE 02 - ACTIVE (JULY 2026)</span>
-            <h4 className="text-[17px] mb-2 font-medium">Priority Waitlist Openings</h4>
-            <p className="mono-body text-[13px] text-[var(--color-ink-muted)]">
-              Opening VIP batch allocation reserves. Allowing early fans to secure a box in the initial run to correctly pace primary production.
-            </p>
-          </div>
-
-          <div className="relative">
-            {/* Timeline Dot */}
-            <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 bg-neutral-300 rounded-full ring-4 ring-white dark:ring-[#2D0F2A]" />
-            <span className="mono-label text-[10px] text-[var(--color-ink-faint)] block mb-1">STAGE 03 - PENDING (AUGUST 2026)</span>
-            <h4 className="text-[17px] mb-2 font-medium">Batch 01 Production & Packing</h4>
-            <p className="mono-body text-[13px] text-[var(--color-ink-faint)]">
-              Primary production runs in our cGMP-certified facility in California. Hermetic packaging of sachets in custom recyclable mailer boxes.
-            </p>
-          </div>
-
-          <div className="relative">
-            {/* Timeline Dot */}
-            <div className="absolute -left-[31px] top-1.5 w-2.5 h-2.5 bg-neutral-300 rounded-full ring-4 ring-white dark:ring-[#2D0F2A]" />
-            <span className="mono-label text-[10px] text-[var(--color-ink-faint)] block mb-1">STAGE 04 - PENDING (SEPTEMBER 2026)</span>
-            <h4 className="text-[17px] mb-2 font-medium">Waitlist Delivery Dispatch</h4>
-            <p className="mono-body text-[13px] text-[var(--color-ink-faint)]">
-              Waitlist passes are billed with the 15% pre-launch discount and dispatched via DHL Express / FedEx directly to doors.
-            </p>
-          </div>
-
-        </div>
-      </section>
-
-      {/* ── Brand Trust & Anti-Scam Verification ── */}
-      <section className="bg-black text-white py-32 lg:py-36 border-t border-white/10">
-        <div className="content-rail text-center max-w-3xl">
-          <p className="mono-label text-white/50 mb-8">SECURITY & TRUST CERTIFICATION</p>
-          <h2 className="mb-20 text-white" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(28px, 3.5vw, 44px)" }}>
-            Shop Confidently.
-          </h2>
-          <p className="mono-body text-sm text-white/70 leading-relaxed mb-12">
-            Nutravey relies on direct Shopify systems. When transactions go live, payments will occur on our verified custom checkout domain (<code className="bg-white/10 px-1 py-0.5 rounded text-white font-semibold">checkout.nutravey.com</code>) using industry-standard PCI-DSS Level 1 encryption. We never store credit card records, and all waitlist entries can be cancelled with a single click.
-          </p>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 items-center justify-items-center opacity-60">
-            <div className="flex flex-col items-center">
-              <span className="mono-label text-[10px] text-white/80">POWERED BY</span>
-              <span className="font-semibold text-sm">SHOPIFY PAYMENTS</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="mono-label text-[10px] text-white/80">ENCRYPTION</span>
-              <span className="font-semibold text-sm">AES-256 SSL</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="mono-label text-[10px] text-white/80">STANDARDS</span>
-              <span className="font-semibold text-sm">cGMP CERTIFIED</span>
-            </div>
-            <div className="flex flex-col items-center">
-              <span className="mono-label text-[10px] text-white/80">SUPPORT</span>
-              <span className="font-semibold text-sm">24/7 VERIFIED</span>
-            </div>
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
