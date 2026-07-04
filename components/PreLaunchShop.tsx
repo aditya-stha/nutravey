@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import Script from "next/script";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { products, curation } from "@/lib/products";
 
@@ -34,7 +35,9 @@ export default function PreLaunchShop() {
   const [selectedIngredient, setSelectedIngredient] = useState<string>("coconut"); // coconut | cherry | magnesium | theanine
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [honeypot, setHoneypot] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<{ id: string; name: string; email: string; flavor: string } | null>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
@@ -56,23 +59,51 @@ export default function PreLaunchShop() {
     setTilt({ x: 0, y: 0 });
   };
 
-  const handleReserve = (e: React.FormEvent) => {
+  const handleReserve = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email || !name) return;
+    if (!email || !name || isSubmitting) return;
     setIsSubmitting(true);
+    setSubmitError(null);
 
-    // Simulate backend allocation ticket generation
-    setTimeout(() => {
-      const serial = `NVY-${selectedItem.slice(0, 2).toUpperCase()}-${Math.floor(10000 + Math.random() * 90000)}`;
+    try {
+      // Turnstile token, when the widget is active (env-gated).
+      const turnstileToken =
+        (window as unknown as { turnstile?: { getResponse: () => string } })
+          .turnstile?.getResponse() ?? "";
+
+      const res = await fetch("/api/waitlist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          email,
+          item: selectedItem,
+          turnstileToken,
+          company: honeypot,
+        }),
+      });
+      const json: { ok?: boolean; id?: string; error?: string } =
+        await res.json();
+
+      if (!res.ok || !json.ok || !json.id) {
+        setSubmitError(json.error ?? "Something went wrong. Try again.");
+        return;
+      }
+
       setTicket({
-        id: serial,
+        id: json.id,
         name: name,
         email: email,
         flavor: selectedItem === "bundle" ? "The Curation Box" : products.find(p => p.id === selectedItem)?.name || "Ritual Set",
       });
+    } catch {
+      setSubmitError("Couldn't reach the reservation service. Check your connection and try again.");
+    } finally {
       setIsSubmitting(false);
-    }, 1200);
+    }
   };
+
+  const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
   // Find active product specs
   const activeProduct = products.find(p => p.id === selectedItem);
@@ -303,12 +334,46 @@ export default function PreLaunchShop() {
                         />
                       </div>
 
+                      {/* Honeypot — hidden from humans, filled by bots. */}
+                      <div aria-hidden="true" style={{ position: "absolute", left: "-9999px", width: "1px", height: "1px", overflow: "hidden" }}>
+                        <label htmlFor="company-input">Company</label>
+                        <input
+                          id="company-input"
+                          type="text"
+                          tabIndex={-1}
+                          autoComplete="off"
+                          value={honeypot}
+                          onChange={(e) => setHoneypot(e.target.value)}
+                        />
+                      </div>
+
+                      {turnstileSiteKey && (
+                        <>
+                          <Script src="https://challenges.cloudflare.com/turnstile/v0/api.js" strategy="lazyOnload" />
+                          <div className="cf-turnstile" data-sitekey={turnstileSiteKey} data-theme="auto" />
+                        </>
+                      )}
+
+                      {submitError && (
+                        <p
+                          role="alert"
+                          className="mono-body text-[13px]"
+                          style={{
+                            color: activeAccent,
+                            borderTop: "0.4px solid var(--color-rule)",
+                            paddingTop: "12px",
+                          }}
+                        >
+                          {submitError}
+                        </p>
+                      )}
+
                       <button
                         type="submit"
                         disabled={isSubmitting}
                         className="mono-cta w-full py-4 text-center text-white bg-[var(--color-ink)] border border-[var(--color-ink)] hover:bg-transparent hover:text-[var(--color-ink)] transition-all duration-300 mt-2 disabled:opacity-50"
-                        style={{ 
-                          backgroundColor: activeAccent, 
+                        style={{
+                          backgroundColor: activeAccent,
                           borderColor: activeAccent,
                         }}
                       >
