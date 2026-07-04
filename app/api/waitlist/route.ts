@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SHOPIFY_STORE_DOMAIN } from "@/lib/shopify-config";
 import { products } from "@/lib/products";
+import { signPass } from "@/lib/pass";
+import { sendPassEmail } from "@/lib/email";
 import { log } from "@/lib/log";
 
 /* ─── Pre-launch reservation endpoint ───────────────────────────────────────
@@ -53,11 +55,14 @@ async function verifyTurnstile(token: string, ip: string): Promise<boolean> {
 }
 
 /** Creates (or re-tags) the lead as a Shopify customer. Returns false only
- *  on hard failure; "email already taken" counts as success. */
+ *  on hard failure; "email already taken" counts as success.
+ *  Tag scheme (each independently segmentable in Shopify admin):
+ *    pre-launch · interested · flavour-<flavour> · selection-<item> */
 async function createShopifyLead(
   name: string,
   email: string,
   item: string,
+  flavour: string,
 ): Promise<boolean> {
   const adminToken = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
   if (!adminToken || !SHOPIFY_STORE_DOMAIN) {
@@ -66,6 +71,13 @@ async function createShopifyLead(
     log.warn("waitlist_lead_unpersisted", { email, item });
     return true;
   }
+
+  const tags = [
+    "pre-launch",
+    "interested",
+    `flavour-${flavour.toLowerCase().replace(/\s+/g, "-")}`,
+    `selection-${item}`,
+  ].join(", ");
 
   const res = await fetch(
     `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/customers.json`,
@@ -79,8 +91,8 @@ async function createShopifyLead(
         customer: {
           first_name: name,
           email,
-          tags: `pre-launch, reserve-${item}`,
-          note: `Pre-launch reservation: ${item}`,
+          tags,
+          note: `Pre-launch reservation: ${flavour} (${item})`,
           email_marketing_consent: {
             state: "subscribed",
             opt_in_level: "single_opt_in",
@@ -149,7 +161,12 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const persisted = await createShopifyLead(name, email, item);
+  const flavor =
+    item === "bundle"
+      ? "The Curation Box"
+      : (products.find((p) => p.id === item)?.name ?? "Ritual Set");
+
+  const persisted = await createShopifyLead(name, email, item, flavor);
   if (!persisted) {
     return NextResponse.json(
       { ok: false, error: "We couldn't save your reservation. Try again." },
@@ -161,6 +178,12 @@ export async function POST(request: NextRequest) {
     10000 + Math.random() * 90000,
   )}`;
 
+  // Private capability URL: the signed payload *is* the record.
+  const passToken = signPass({ id, name, email, item, flavor, ts: Date.now() });
+  const passUrl = `${request.nextUrl.origin}/pass?t=${passToken}`;
+
+  await sendPassEmail({ to: email, name, flavor, id, passUrl });
+
   log.info("waitlist_signup", { item, id });
-  return NextResponse.json({ ok: true, id });
+  return NextResponse.json({ ok: true, id, passUrl });
 }

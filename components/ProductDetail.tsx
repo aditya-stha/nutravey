@@ -8,6 +8,7 @@ import { useCart } from "@shopify/hydrogen-react";
 import type { Product } from "@/lib/products";
 import { products } from "@/lib/products";
 import IngredientGrid from "@/components/IngredientGrid";
+import HoloTicket from "@/components/HoloTicket";
 import { isPreLaunch } from "@/lib/shopify-config";
 import { track } from "@/lib/analytics";
 
@@ -37,19 +38,8 @@ export default function ProductDetail({
   const [pdpIsSubmitting, setPdpIsSubmitting] = useState(false);
   const [pdpTicket, setPdpTicket] = useState<{ id: string; name: string; email: string; flavor: string } | null>(null);
   const [pdpError, setPdpError] = useState<string | null>(null);
-  const [pdpTilt, setPdpTilt] = useState({ x: 0, y: 0 });
+  const [pdpPassUrl, setPdpPassUrl] = useState<string | null>(null);
   const [showPdpForm, setShowPdpForm] = useState(false);
-
-  const handlePdpMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (reduce) return;
-    const card = e.currentTarget;
-    const box = card.getBoundingClientRect();
-    const x = e.clientX - box.left - box.width / 2;
-    const y = e.clientY - box.top - box.height / 2;
-    const tiltX = (y / (box.height / 2)) * -12;
-    const tiltY = (x / (box.width / 2)) * 12;
-    setPdpTilt({ x: tiltX, y: tiltY });
-  };
 
   const handlePdpReserve = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,12 +52,13 @@ export default function ProductDetail({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: pdpName, email: pdpEmail, item: product.id }),
       });
-      const json: { ok?: boolean; id?: string; error?: string } = await res.json();
+      const json: { ok?: boolean; id?: string; passUrl?: string; error?: string } = await res.json();
       if (!res.ok || !json.ok || !json.id) {
         setPdpError(json.error ?? "Something went wrong. Try again.");
         return;
       }
       track("generate_lead", { item_id: product.slug, source: "pdp" });
+      setPdpPassUrl(json.passUrl ?? null);
       setPdpTicket({
         id: json.id,
         name: pdpName,
@@ -337,95 +328,19 @@ export default function ProductDetail({
                       transition={{ duration: 0.4 }}
                       className="flex flex-col items-center animate-fade-in"
                     >
-                      <div
-                        onMouseMove={handlePdpMouseMove}
-                        onMouseLeave={() => setPdpTilt({ x: 0, y: 0 })}
-                        style={{
-                          transform: `perspective(1000px) rotateX(${pdpTilt.x}deg) rotateY(${pdpTilt.y}deg)`,
-                          transition: reduce ? "none" : "transform 0.15s ease-out",
-                          width: "100%",
-                          maxWidth: "320px",
-                          transformStyle: "preserve-3d",
-                          backgroundColor: "#000",
-                          color: "#fff"
-                        }}
-                        className="border border-[var(--color-rule)] p-6 relative overflow-hidden flex flex-col justify-between"
-                      >
-                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
-                        <div 
-                          className="absolute w-40 h-40 rounded-full filter blur-[35px] opacity-35 pointer-events-none" 
-                          style={{
-                            background: product.accent,
-                            top: "-15%",
-                            right: "-15%"
-                          }}
-                        />
-
-                        {/* Pass Header */}
-                        <div className="flex justify-between items-start border-b border-white/10 pb-3 mb-5">
-                          <div>
-                            <p className="mono-label text-[8px] text-white/50 tracking-[0.2em] mb-0.5">RITUAL PASS</p>
-                            <p className="font-semibold text-base tracking-tight text-white">NUTRAVEY</p>
-                          </div>
-                          <span className="mono-label text-[8px] px-2 py-0.5 border border-white/20 text-white/80 uppercase">
-                            VIP PASS
-                          </span>
-                        </div>
-
-                        {/* Pass Body */}
-                        <div className="flex flex-col gap-3 mb-6 text-left">
-                          <div>
-                            <p className="mono-label text-[7px] text-white/40 mb-0.5">RITUAL ALLOCATED</p>
-                            <p className="font-medium text-[14px]" style={{ color: product.accent }}>{pdpTicket.flavor}</p>
-                          </div>
-                          <div>
-                            <p className="mono-label text-[7px] text-white/40 mb-0.5">HOLDER</p>
-                            <p className="font-medium text-[13px] text-white">{pdpTicket.name}</p>
-                          </div>
-                          <div>
-                            <p className="mono-label text-[7px] text-white/40 mb-0.5">INVOICE CORRESPONDENCE</p>
-                            <p className="font-mono text-[11px] text-white/70 break-all">{pdpTicket.email}</p>
-                          </div>
-                        </div>
-
-                        {/* Barcode */}
-                        <div className="flex justify-between items-end border-t border-white/10 pt-3 mt-auto">
-                          <div>
-                            <p className="mono-label text-[7px] text-white/40 mb-0.5">SLOT SERIAL</p>
-                            <p className="font-mono text-[11px] tracking-widest text-white/90">{pdpTicket.id}</p>
-                          </div>
-                          
-                          <div className="flex flex-col items-center">
-                            <svg width="76" height="20" viewBox="0 0 100 24" className="text-white/80" fill="currentColor">
-                              <rect x="0" y="0" width="3" height="24" />
-                              <rect x="5" y="0" width="1" height="24" />
-                              <rect x="8" y="0" width="4" height="24" />
-                              <rect x="14" y="0" width="2" height="24" />
-                              <rect x="18" y="0" width="1" height="24" />
-                              <rect x="21" y="0" width="3" height="24" />
-                              <rect x="26" y="0" width="5" height="24" />
-                              <rect x="33" y="0" width="1" height="24" />
-                              <rect x="36" y="0" width="2" height="24" />
-                              <rect x="40" y="0" width="4" height="24" />
-                              <rect x="46" y="0" width="1" height="24" />
-                              <rect x="49" y="0" width="3" height="24" />
-                              <rect x="54" y="0" width="6" height="24" />
-                              <rect x="62" y="0" width="2" height="24" />
-                              <rect x="66" y="0" width="1" height="24" />
-                              <rect x="69" y="0" width="3" height="24" />
-                              <rect x="74" y="0" width="4" height="24" />
-                              <rect x="80" y="0" width="1" height="24" />
-                              <rect x="83" y="0" width="2" height="24" />
-                              <rect x="87" y="0" width="5" height="24" />
-                              <rect x="94" y="0" width="1" height="24" />
-                              <rect x="97" y="0" width="3" height="24" />
-                            </svg>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="mono-body text-[10px] text-[var(--color-ink-muted)] mt-2">
-                        ✓ Secured. Allocation reference code is {pdpTicket.id}.
+                      <HoloTicket ticket={pdpTicket} accent={product.accent} />
+                      <p className="mono-body text-[10px] text-[var(--color-ink-muted)] mt-3">
+                        Secured. A confirmation with your private pass link is on its way.
                       </p>
+                      {pdpPassUrl && (
+                        <a
+                          href={pdpPassUrl}
+                          className="mono-cta text-[11px] mt-3"
+                          style={{ color: "var(--color-ink)", borderBottom: `1px solid ${product.accent}`, paddingBottom: "2px" }}
+                        >
+                          View your pass &amp; launch countdown →
+                        </a>
+                      )}
                     </motion.div>
                   )}
                 </AnimatePresence>

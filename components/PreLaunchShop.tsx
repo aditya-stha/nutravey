@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Image from "next/image";
 import Script from "next/script";
-import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { products, curation } from "@/lib/products";
 import { track } from "@/lib/analytics";
+import HoloTicket from "@/components/HoloTicket";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
@@ -30,7 +31,6 @@ const atmospheres: Record<string, { bg: string; textAccent: string }> = {
 };
 
 export default function PreLaunchShop() {
-  const reduce = useReducedMotion();
   const [selectedItem, setSelectedItem] = useState<string>("strawberry"); // strawberry | lychee | lemon | bundle
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
@@ -38,25 +38,7 @@ export default function PreLaunchShop() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [ticket, setTicket] = useState<{ id: string; name: string; email: string; flavor: string } | null>(null);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
-
-  // Interactive 3D Card Hover Effect
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (reduce) return;
-    const card = e.currentTarget;
-    const box = card.getBoundingClientRect();
-    const x = e.clientX - box.left - box.width / 2;
-    const y = e.clientY - box.top - box.height / 2;
-    
-    // Normalise tilt values (up to 12 degrees)
-    const tiltX = (y / (box.height / 2)) * -12;
-    const tiltY = (x / (box.width / 2)) * 12;
-    setTilt({ x: tiltX, y: tiltY });
-  };
-
-  const handleMouseLeave = () => {
-    setTilt({ x: 0, y: 0 });
-  };
+  const [passUrl, setPassUrl] = useState<string | null>(null);
 
   const handleReserve = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -81,7 +63,7 @@ export default function PreLaunchShop() {
           company: honeypot,
         }),
       });
-      const json: { ok?: boolean; id?: string; error?: string } =
+      const json: { ok?: boolean; id?: string; passUrl?: string; error?: string } =
         await res.json();
 
       if (!res.ok || !json.ok || !json.id) {
@@ -90,6 +72,7 @@ export default function PreLaunchShop() {
       }
 
       track("generate_lead", { item_id: selectedItem, source: "shop" });
+      setPassUrl(json.passUrl ?? null);
       setTicket({
         id: json.id,
         name: name,
@@ -249,8 +232,20 @@ export default function PreLaunchShop() {
                     transition={{ duration: 0.4, ease: EASE }}
                     className="flex flex-col md:flex-row gap-8 items-center"
                   >
-                    <div className="relative w-44 h-56 flex-shrink-0 bg-[var(--color-surface-warm)] flex items-center justify-center border border-[var(--color-rule)]">
-                      <span className="mono-label text-center opacity-40 p-4">Full Curation System</span>
+                    {/* All three rituals, shown as a strip — the bundle IS
+                        the three products. */}
+                    <div className="relative w-44 h-56 flex-shrink-0 flex border border-[var(--color-rule)]">
+                      {products.map((p) => (
+                        <div key={p.id} className="relative flex-1 overflow-hidden" style={{ borderRight: p.position !== "right" ? "0.4px solid var(--color-rule)" : "none" }}>
+                          <Image
+                            src={p.image}
+                            alt={p.name}
+                            fill
+                            className="object-cover"
+                            sizes="60px"
+                          />
+                        </div>
+                      ))}
                     </div>
                     <div className="flex-1">
                       <p className="mono-label text-[11px] mb-2" style={{ color: atmospheres.bundle.textAccent }}>
@@ -388,141 +383,25 @@ export default function PreLaunchShop() {
                     transition={{ duration: 0.5, ease: EASE }}
                     className="flex flex-col items-center"
                   >
-                    {/* Interactive 3D holo card. The iridescent sheen's
-                        position and the foil badge's hue rotation are driven
-                        by the same tilt values as the card itself, so the
-                        hologram shifts with viewing angle like real foil. */}
-                    <div
-                      onMouseMove={handleMouseMove}
-                      onMouseLeave={handleMouseLeave}
-                      style={{
-                        transform: `perspective(1000px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
-                        transition: reduce ? "none" : "transform 0.15s ease-out",
-                        width: "100%",
-                        maxWidth: "340px",
-                        transformStyle: "preserve-3d",
-                        backgroundColor: "var(--color-surface-footer)",
-                        color: "var(--color-cream)",
-                        borderColor: `color-mix(in srgb, ${activeAccent} 45%, transparent)`,
-                        boxShadow: `0 0 70px -22px ${activeAccent}`,
-                      }}
-                      className="border p-6 relative overflow-hidden flex flex-col justify-between"
-                    >
-                      {/* Iridescent sheen — rides the tilt */}
-                      <div
-                        aria-hidden="true"
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          pointerEvents: "none",
-                          background:
-                            "linear-gradient(115deg, transparent 30%, rgba(94,240,255,0.10) 42%, rgba(255,94,247,0.13) 50%, rgba(160,255,140,0.10) 58%, transparent 70%)",
-                          backgroundSize: "300% 300%",
-                          backgroundPosition: `${50 - tilt.y * 4}% ${50 - tilt.x * 4}%`,
-                          mixBlendMode: "screen",
-                          transition: reduce ? "none" : "background-position 0.15s ease-out",
-                        }}
-                      />
-                      {/* Micro scanlines */}
-                      <div
-                        aria-hidden="true"
-                        style={{
-                          position: "absolute",
-                          inset: 0,
-                          pointerEvents: "none",
-                          background:
-                            "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px)",
-                        }}
-                      />
-                      {/* Spectral top edge */}
-                      <div
-                        aria-hidden="true"
-                        style={{
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: "1px",
-                          background: `linear-gradient(90deg, transparent, rgba(94,240,255,0.5), ${activeAccent}, rgba(255,94,247,0.5), transparent)`,
-                        }}
-                      />
-
-                      {/* Header */}
-                      <div className="flex justify-between items-start border-b border-white/10 pb-4 mb-6">
-                        <div>
-                          <p className="mono-label text-[8px] text-white/50 tracking-[0.2em] mb-1">RITUAL PASS</p>
-                          <p className="font-semibold text-lg tracking-tight">NUTRAVEY</p>
-                        </div>
-                        {/* Holo-foil badge: conic border rotates with tilt */}
-                        <span
-                          className="mono-label text-[9px] px-2 py-0.5 text-white/90 uppercase"
-                          style={{
-                            border: "1px solid transparent",
-                            backgroundImage: `linear-gradient(var(--color-surface-footer), var(--color-surface-footer)), conic-gradient(from ${135 + tilt.y * 14}deg, rgba(94,240,255,0.9), ${activeAccent}, rgba(255,94,247,0.9), rgba(160,255,140,0.8), rgba(94,240,255,0.9))`,
-                            backgroundOrigin: "border-box",
-                            backgroundClip: "padding-box, border-box",
-                          }}
-                        >
-                          VIP PRIORITY
-                        </span>
-                      </div>
-
-                      {/* Ticket Body */}
-                      <div className="flex flex-col gap-4 mb-8">
-                        <div>
-                          <p className="mono-label text-[8px] text-white/40 mb-0.5">ALLOCATED SLATE</p>
-                          <p className="font-medium text-[15px]" style={{ color: activeAccent }}>{ticket.flavor}</p>
-                        </div>
-                        <div>
-                          <p className="mono-label text-[8px] text-white/40 mb-0.5">RESERVED FOR</p>
-                          <p className="font-medium text-[15px]">{ticket.name}</p>
-                        </div>
-                        <div>
-                          <p className="mono-label text-[8px] text-white/40 mb-0.5">EMAIL CORRESPONDENCE</p>
-                          <p className="font-mono text-xs text-white/70 break-all">{ticket.email}</p>
-                        </div>
-                      </div>
-
-                      {/* Barcode & Identifier */}
-                      <div className="flex justify-between items-end border-t border-white/10 pt-4 mt-auto">
-                        <div>
-                          <p className="mono-label text-[8px] text-white/40 mb-0.5">SLOT ID</p>
-                          <p className="font-mono text-sm tracking-widest text-white/90">{ticket.id}</p>
-                        </div>
-                        
-                        {/* Styled SVG Barcode */}
-                        <div className="flex flex-col items-center">
-                          <svg width="84" height="24" viewBox="0 0 100 24" className="text-white/80" fill="currentColor">
-                            <rect x="0" y="0" width="3" height="24" />
-                            <rect x="5" y="0" width="1" height="24" />
-                            <rect x="8" y="0" width="4" height="24" />
-                            <rect x="14" y="0" width="2" height="24" />
-                            <rect x="18" y="0" width="1" height="24" />
-                            <rect x="21" y="0" width="3" height="24" />
-                            <rect x="26" y="0" width="5" height="24" />
-                            <rect x="33" y="0" width="1" height="24" />
-                            <rect x="36" y="0" width="2" height="24" />
-                            <rect x="40" y="0" width="4" height="24" />
-                            <rect x="46" y="0" width="1" height="24" />
-                            <rect x="49" y="0" width="3" height="24" />
-                            <rect x="54" y="0" width="6" height="24" />
-                            <rect x="62" y="0" width="2" height="24" />
-                            <rect x="66" y="0" width="1" height="24" />
-                            <rect x="69" y="0" width="3" height="24" />
-                            <rect x="74" y="0" width="4" height="24" />
-                            <rect x="80" y="0" width="1" height="24" />
-                            <rect x="83" y="0" width="2" height="24" />
-                            <rect x="87" y="0" width="5" height="24" />
-                            <rect x="94" y="0" width="1" height="24" />
-                            <rect x="97" y="0" width="3" height="24" />
-                          </svg>
-                        </div>
-                      </div>
-                    </div>
-
+                    <HoloTicket ticket={ticket} accent={activeAccent} />
                     <p className="mono-body text-[11px] text-[var(--color-ink-muted)] mt-4 text-center">
-                      Reserved. Your slot is registered to {ticket.email}.
+                      Reserved. Your slot is registered to {ticket.email} —
+                      a confirmation with your private pass link is on its way.
                     </p>
+
+                    {passUrl && (
+                      <a
+                        href={passUrl}
+                        className="mono-cta text-[12px] mt-4"
+                        style={{
+                          color: "var(--color-ink)",
+                          borderBottom: `1px solid ${activeAccent}`,
+                          paddingBottom: "2px",
+                        }}
+                      >
+                        View your pass &amp; launch countdown →
+                      </a>
+                    )}
 
                     <button
                       onClick={() => setTicket(null)}

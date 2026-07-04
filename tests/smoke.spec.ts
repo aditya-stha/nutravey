@@ -40,7 +40,10 @@ test("cart page renders the pre-launch notice", async ({ page }) => {
   await expect(page.getByText(/pre-launch reservation phase/i)).toBeVisible();
 });
 
-test("waitlist API accepts a valid reservation", async ({ request }) => {
+test("waitlist API accepts a reservation and issues a working pass link", async ({
+  request,
+  page,
+}) => {
   const res = await request.post("/api/waitlist", {
     data: {
       name: "Smoke Test",
@@ -52,6 +55,18 @@ test("waitlist API accepts a valid reservation", async ({ request }) => {
   const json = await res.json();
   expect(json.ok).toBe(true);
   expect(json.id).toMatch(/^NVY-/);
+  expect(json.passUrl).toContain("/pass?t=");
+
+  // The signed link renders the private pass with ticket + countdown.
+  await page.goto(json.passUrl);
+  await expect(page.getByText("RITUAL PASS · VERIFIED")).toBeVisible();
+  await expect(page.getByText(json.id)).toBeVisible();
+  await expect(page.getByText("LAUNCH IN")).toBeVisible();
+});
+
+test("a tampered pass token is rejected", async ({ page }) => {
+  await page.goto("/pass?t=forged-token.invalid");
+  await expect(page.getByText("This pass isn't valid.")).toBeVisible();
 });
 
 test("waitlist API rejects a bad payload", async ({ request }) => {
