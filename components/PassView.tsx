@@ -70,17 +70,21 @@ function Countdown({ accent }: { accent: string }) {
   ];
 
   return (
-    <div style={{ display: "inline-flex" }}>
+    <div
+      style={{
+        display: "inline-flex",
+        border: "0.4px solid var(--color-rule)",
+        borderRadius: "var(--radius-canvas)",
+        overflow: "hidden",
+      }}
+    >
       {cells.map((c, i) => (
         <div
           key={c.label}
           style={{
             padding: "16px 0",
             width: "88px",
-            borderTop: "0.4px solid var(--color-rule)",
-            borderBottom: "0.4px solid var(--color-rule)",
-            borderLeft: i === 0 ? "0.4px solid var(--color-rule)" : "none",
-            borderRight: "0.4px solid var(--color-rule)",
+            borderLeft: i === 0 ? "none" : "0.4px solid var(--color-rule)",
           }}
         >
           <p

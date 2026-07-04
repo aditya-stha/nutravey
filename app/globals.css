@@ -105,6 +105,11 @@
 
   /* Display font — loaded via @font-face above */
   --font-display: "LEMONMILK", Georgia, serif;
+
+  /* Corner language — matches the product-canvas squircle (~5% ≈ 12px).
+     Full value for cards/controls/canvases; half for small chips/badges. */
+  --radius-canvas: 12px;
+  --radius-chip: 6px;
 }
 
 /* JetBrains Mono injected as a CSS var by next/font/google in layout.tsx */
@@ -232,4 +237,14 @@ hr {
     padding-top: 96px;
     padding-bottom: 96px;
   }
+}
+
+/* ─── Corner consistency ────────────────────────────────────────────────────
+   Every bordered control shares the product-canvas corner language.
+   Hairline dividers (border-top/bottom only) are unaffected by radius. */
+button,
+input,
+select,
+textarea {
+  border-radius: var(--radius-canvas);
 }

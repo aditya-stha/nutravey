@@ -265,6 +265,7 @@ export default function ProductDetail({
                           animate={{ opacity: 1, height: "auto" }}
                           transition={{ duration: 0.3, ease: EASE }}
                           className="border border-[var(--color-rule)] p-6 bg-[var(--color-surface-warm)] flex flex-col gap-4 overflow-hidden"
+                          style={{ borderRadius: "var(--radius-canvas)" }}
                         >
                           <p className="mono-body text-[12px] text-[var(--color-ink-muted)] mb-2">
                             Secure your position in the upcoming batch release of {product.name}. Zero payment due today.
@@ -279,7 +280,7 @@ export default function ProductDetail({
                               onChange={(e) => setPdpName(e.target.value)}
                               placeholder="Aditya Shrestha"
                               className="w-full bg-[var(--color-surface)] border border-[var(--color-rule)] px-3 py-2 font-mono text-[13px] focus:outline-none focus:border-[var(--color-ink)]"
-                              style={{ borderRadius: 0 }}
+                              
                             />
                           </div>
                           <div>
@@ -292,7 +293,7 @@ export default function ProductDetail({
                               onChange={(e) => setPdpEmail(e.target.value)}
                               placeholder="aditya@example.com"
                               className="w-full bg-[var(--color-surface)] border border-[var(--color-rule)] px-3 py-2 font-mono text-[13px] focus:outline-none focus:border-[var(--color-ink)]"
-                              style={{ borderRadius: 0 }}
+                              
                             />
                           </div>
                           {pdpError && (

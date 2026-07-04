@@ -52,6 +52,7 @@ export default function HoloTicket({
         color: "var(--color-cream)",
         borderColor: `color-mix(in srgb, ${accent} 45%, transparent)`,
         boxShadow: `0 0 70px -22px ${accent}`,
+        borderRadius: "var(--radius-canvas)",
       }}
       className="border p-6 relative overflow-hidden flex flex-col justify-between"
     >
@@ -107,6 +108,7 @@ export default function HoloTicket({
           className="mono-label text-[9px] px-2 py-0.5 text-white/90 uppercase"
           style={{
             border: "1px solid transparent",
+            borderRadius: "var(--radius-chip)",
             backgroundImage: `linear-gradient(var(--color-aubergine-deep), var(--color-aubergine-deep)), conic-gradient(from ${135 + tilt.y * 14}deg, rgba(94,240,255,0.9), ${accent}, rgba(255,94,247,0.9), rgba(160,255,140,0.8), rgba(94,240,255,0.9))`,
             backgroundOrigin: "border-box",
             backgroundClip: "padding-box, border-box",

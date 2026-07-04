@@ -53,7 +53,6 @@ export default function ThemeToggle() {
         height: 20,
         background: "transparent",
         border: "none",
-        borderRadius: 0,
         padding: 0,
         cursor: "pointer",
         color: "var(--color-ink)",

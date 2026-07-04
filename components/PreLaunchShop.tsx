@@ -155,7 +155,7 @@ export default function PreLaunchShop() {
                 <button
                   key={p.id}
                   onClick={() => setSelectedItem(p.id)}
-                  className={`mono-cta px-5 py-3 border rounded-none transition-all duration-300 ${
+                  className={`mono-cta px-5 py-3 border transition-all duration-300 ${
                     selectedItem === p.id 
                       ? "bg-[var(--color-ink)] text-[var(--color-surface)] border-[var(--color-ink)]"
                       : "border-[var(--color-rule)] hover:opacity-80"
@@ -170,7 +170,7 @@ export default function PreLaunchShop() {
               ))}
               <button
                 onClick={() => setSelectedItem("bundle")}
-                className={`mono-cta px-5 py-3 border rounded-none transition-all duration-300 ${
+                className={`mono-cta px-5 py-3 border transition-all duration-300 ${
                   selectedItem === "bundle"
                     ? "bg-[var(--color-ink)] text-[var(--color-surface)] border-[var(--color-ink)]"
                     : "border-[var(--color-rule)] hover:opacity-80"
@@ -185,7 +185,7 @@ export default function PreLaunchShop() {
             </div>
 
             {/* Spotlight Showcase */}
-            <div className="border border-[var(--color-rule)] p-10 md:p-12 relative overflow-hidden bg-[var(--color-surface-card)]" style={{ minHeight: "400px" }}>
+            <div className="border border-[var(--color-rule)] p-10 md:p-12 relative overflow-hidden bg-[var(--color-surface-card)]" style={{ minHeight: "400px", borderRadius: "var(--radius-canvas)" }}>
               <AnimatePresence mode="wait">
                 {selectedItem !== "bundle" && activeProduct ? (
                   <motion.div
@@ -226,7 +226,7 @@ export default function PreLaunchShop() {
                           <span
                             key={i}
                             className="mono-label text-[9px] px-2.5 py-1 border bg-transparent inline-block text-[var(--color-ink-muted)] border-[var(--color-rule)]"
-                            style={{ textDecoration: "none" }}
+                            style={{ textDecoration: "none", borderRadius: "var(--radius-chip)" }}
                           >
                             {ing}
                           </span>
@@ -282,7 +282,7 @@ export default function PreLaunchShop() {
                       <div className="flex items-baseline gap-3">
                         <span className="font-semibold text-2xl" style={{ color: atmospheres.bundle.textAccent }}>{curation.bundlePriceLabel}</span>
                         <span className="line-through opacity-40 text-sm">{curation.listPriceLabel}</span>
-                        <span className="mono-label text-[10px] px-2 py-0.5 border border-[var(--color-rule)]" style={{ color: atmospheres.bundle.textAccent }}>
+                        <span className="mono-label text-[10px] px-2 py-0.5 border border-[var(--color-rule)]" style={{ color: atmospheres.bundle.textAccent, borderRadius: "var(--radius-chip)" }}>
                           {curation.savingsLabel}
                         </span>
                       </div>
@@ -309,6 +309,7 @@ export default function PreLaunchShop() {
                     exit={{ opacity: 0, scale: 0.98 }}
                     transition={{ duration: 0.4, ease: EASE }}
                     className="border border-[var(--color-rule)] p-10 lg:p-10 bg-[var(--color-surface-card)] relative"
+                    style={{ borderRadius: "var(--radius-canvas)" }}
                   >
                     <p className="mono-body text-[13px] text-[var(--color-ink-muted)] mb-6">
                       Pre-order allocation is 100% free. When the store goes live, you will receive an early billing invoice via email to confirm purchase with a 15% VIP discount.
@@ -325,7 +326,7 @@ export default function PreLaunchShop() {
                           onChange={(e) => setName(e.target.value)}
                           placeholder="Aditya Shrestha"
                           className="w-full bg-[var(--color-surface)] border border-[var(--color-rule)] px-4 py-3 font-mono text-[14px] focus:outline-none focus:border-[var(--color-ink)]"
-                          style={{ borderRadius: 0 }}
+                          
                         />
                       </div>
                       <div>
@@ -338,7 +339,7 @@ export default function PreLaunchShop() {
                           onChange={(e) => setEmail(e.target.value)}
                           placeholder="aditya@example.com"
                           className="w-full bg-[var(--color-surface)] border border-[var(--color-rule)] px-4 py-3 font-mono text-[14px] focus:outline-none focus:border-[var(--color-ink)]"
-                          style={{ borderRadius: 0 }}
+                          
                         />
                       </div>
 

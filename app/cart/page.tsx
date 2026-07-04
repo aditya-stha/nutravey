@@ -243,6 +243,7 @@ function CartStyles() {
         height: 110px;
         background: var(--color-surface);
         overflow: hidden;
+        border-radius: var(--radius-canvas);
       }
 
       .cart-line-name {
@@ -303,6 +304,7 @@ function CartStyles() {
         background: var(--color-ink);
         color: var(--color-surface);
         letter-spacing: 0.08em;
+        border-radius: var(--radius-canvas);
         transition: opacity 200ms ease, transform 200ms ease;
       }
       .cart-checkout:hover { opacity: 0.88; transform: translateY(-1px); }
