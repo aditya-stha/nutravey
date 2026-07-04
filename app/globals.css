@@ -90,6 +90,8 @@
      can be applied with a single attribute switch on <html>. */
   --color-surface:         #FAFAFA;
   --color-surface-warm:    #F2ECE0;
+  --color-surface-card:    #FCF8F2;
+  --color-surface-card-strong: #FFFFFF;
   --color-surface-header:  #FAFAFA;
   --color-surface-footer:  #2D0F2A;
   --color-surface-hero:    #E8DDD0;
@@ -120,6 +122,8 @@ html[data-theme="dark"] {
 
   --color-surface:         #2D0F2A;  /* aubergine — body / trio */
   --color-surface-warm:    #3A1530;  /* aubergine lift */
+  --color-surface-card:    #3A1530;
+  --color-surface-card-strong: #4A1B40;
   --color-surface-header:  #2D0F2A;
   --color-surface-footer:  #1A0518;  /* deeper, for footer separation */
   --color-surface-hero:    #4A1B40;  /* lifted, vibrant — never blends with the trio surface */

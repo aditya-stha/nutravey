@@ -3,20 +3,89 @@
 import { useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
+import { useCart } from "@shopify/hydrogen-react";
 import type { Product } from "@/lib/products";
 import { products } from "@/lib/products";
 import IngredientGrid from "@/components/IngredientGrid";
+import { isPreLaunch } from "@/lib/shopify-config";
 
 interface ProductDetailProps {
   product: Product;
+  /** Shopify variant GID (merchandiseId). Absent when Shopify isn't
+   *  configured or the product has no published variant — add-to-cart is
+   *  disabled and the static price from `lib/products.ts` is shown. */
+  variantId?: string;
+  /** Whether the variant is purchasable. Defaults to false when unknown. */
+  available?: boolean;
 }
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
-export default function ProductDetail({ product }: ProductDetailProps) {
+export default function ProductDetail({
+  product,
+  variantId,
+  available = false,
+}: ProductDetailProps) {
   const reduce = useReducedMotion();
   const [qty, setQty] = useState(1);
+
+  // Pre-launch reservation state hooks
+  const [pdpEmail, setPdpEmail] = useState("");
+  const [pdpName, setPdpName] = useState("");
+  const [pdpIsSubmitting, setPdpIsSubmitting] = useState(false);
+  const [pdpTicket, setPdpTicket] = useState<{ id: string; name: string; email: string; flavor: string } | null>(null);
+  const [pdpTilt, setPdpTilt] = useState({ x: 0, y: 0 });
+  const [showPdpForm, setShowPdpForm] = useState(false);
+
+  const handlePdpMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (reduce) return;
+    const card = e.currentTarget;
+    const box = card.getBoundingClientRect();
+    const x = e.clientX - box.left - box.width / 2;
+    const y = e.clientY - box.top - box.height / 2;
+    const tiltX = (y / (box.height / 2)) * -12;
+    const tiltY = (x / (box.width / 2)) * 12;
+    setPdpTilt({ x: tiltX, y: tiltY });
+  };
+
+  const handlePdpReserve = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!pdpEmail || !pdpName) return;
+    setPdpIsSubmitting(true);
+    setTimeout(() => {
+      const serial = `NVY-${product.id.slice(0, 2).toUpperCase()}-${Math.floor(10000 + Math.random() * 90000)}`;
+      setPdpTicket({
+        id: serial,
+        name: pdpName,
+        email: pdpEmail,
+        flavor: product.name,
+      });
+      setPdpIsSubmitting(false);
+    }, 1200);
+  };
+
+  const { linesAdd, status, checkoutUrl } = useCart();
+
+  /* `creating`/`updating` mean a Storefront mutation is in flight. */
+  const cartBusy = status === "creating" || status === "updating";
+  const purchasable = Boolean(variantId) && available;
+
+  /** Add the selected quantity to the Storefront cart. Returns true when the
+   *  add was dispatched (used by Buy Now to then redirect to checkout). */
+  function addToCart(): boolean {
+    if (!variantId || !purchasable || cartBusy) return false;
+    linesAdd([{ merchandiseId: variantId, quantity: qty }]);
+    return true;
+  }
+
+  function buyNow() {
+    if (!addToCart()) return;
+    // `checkoutUrl` exists only once the cart has been created on the
+    // Storefront. If it's ready, jump straight to Shopify checkout; otherwise
+    // send the shopper to the cart page where the checkout link resolves.
+    window.location.href = checkoutUrl ?? "/cart";
+  }
 
   /* Sibling products for the "also explore" row at the bottom. */
   const siblings = products.filter((p) => p.slug !== product.slug);
@@ -145,56 +214,256 @@ export default function ProductDetail({ product }: ProductDetailProps) {
               </span>
             </div>
 
-            {/* Qty selector */}
-            <div className="pdp-qty-row">
-              <span
-                className="mono-label"
-                style={{ color: "var(--color-ink-muted)" }}
-              >
-                Quantity
-              </span>
-              <div className="pdp-qty">
-                <button
-                  type="button"
-                  className="pdp-qty-btn mono-cta"
-                  aria-label="Decrease quantity"
-                  onClick={() => setQty((q) => Math.max(1, q - 1))}
-                  disabled={qty <= 1}
-                >
-                  −
-                </button>
-                <span
-                  className="mono-cta"
-                  style={{ minWidth: "32px", textAlign: "center" }}
-                  aria-live="polite"
-                >
-                  {qty}
-                </span>
-                <button
-                  type="button"
-                  className="pdp-qty-btn mono-cta"
-                  aria-label="Increase quantity"
-                  onClick={() => setQty((q) => Math.min(9, q + 1))}
-                  disabled={qty >= 9}
-                >
-                  +
-                </button>
-              </div>
-            </div>
+            {isPreLaunch ? (
+              <div style={{ marginTop: "24px" }}>
+                <AnimatePresence mode="wait">
+                  {!pdpTicket ? (
+                    <motion.div
+                      key="pdp-reserve-container"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="flex flex-col gap-4"
+                    >
+                      {!showPdpForm ? (
+                        <button
+                          type="button"
+                          className="pdp-cta-primary mono-cta w-full py-4 text-center cursor-pointer text-white transition-opacity hover:opacity-90"
+                          style={{ backgroundColor: product.accent }}
+                          onClick={() => setShowPdpForm(true)}
+                        >
+                          Reserve Priority Allocation
+                        </button>
+                      ) : (
+                        <motion.form
+                          onSubmit={handlePdpReserve}
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: "auto" }}
+                          transition={{ duration: 0.3, ease: EASE }}
+                          className="border border-[var(--color-rule)] p-6 bg-[var(--color-surface-warm)] flex flex-col gap-4 overflow-hidden"
+                        >
+                          <p className="mono-body text-[12px] text-[var(--color-ink-muted)] mb-2">
+                            Secure your position in the upcoming batch release of {product.name}. Zero payment due today.
+                          </p>
+                          <div>
+                            <label htmlFor="pdp-name" className="mono-label text-[9px] block mb-1 opacity-60">Full Name</label>
+                            <input
+                              id="pdp-name"
+                              type="text"
+                              required
+                              value={pdpName}
+                              onChange={(e) => setPdpName(e.target.value)}
+                              placeholder="Aditya Shrestha"
+                              className="w-full bg-[var(--color-surface)] border border-[var(--color-rule)] px-3 py-2 font-mono text-[13px] focus:outline-none focus:border-[var(--color-ink)]"
+                              style={{ borderRadius: 0 }}
+                            />
+                          </div>
+                          <div>
+                            <label htmlFor="pdp-email" className="mono-label text-[9px] block mb-1 opacity-60">Email Address</label>
+                            <input
+                              id="pdp-email"
+                              type="email"
+                              required
+                              value={pdpEmail}
+                              onChange={(e) => setPdpEmail(e.target.value)}
+                              placeholder="aditya@example.com"
+                              className="w-full bg-[var(--color-surface)] border border-[var(--color-rule)] px-3 py-2 font-mono text-[13px] focus:outline-none focus:border-[var(--color-ink)]"
+                              style={{ borderRadius: 0 }}
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={pdpIsSubmitting}
+                            className="mono-cta w-full py-3 text-center text-white bg-[var(--color-ink)] hover:bg-transparent hover:text-[var(--color-ink)] border border-[var(--color-ink)] transition-all duration-300 disabled:opacity-50"
+                            style={{ backgroundColor: product.accent, borderColor: product.accent }}
+                          >
+                            {pdpIsSubmitting ? "ALLOCATING..." : "CONFIRM FREE SLOT"}
+                          </button>
+                        </motion.form>
+                      )}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="pdp-ticket"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.4 }}
+                      className="flex flex-col items-center animate-fade-in"
+                    >
+                      <div
+                        onMouseMove={handlePdpMouseMove}
+                        onMouseLeave={() => setPdpTilt({ x: 0, y: 0 })}
+                        style={{
+                          transform: `perspective(1000px) rotateX(${pdpTilt.x}deg) rotateY(${pdpTilt.y}deg)`,
+                          transition: reduce ? "none" : "transform 0.15s ease-out",
+                          width: "100%",
+                          maxWidth: "320px",
+                          transformStyle: "preserve-3d",
+                          backgroundColor: "#000",
+                          color: "#fff"
+                        }}
+                        className="border border-[var(--color-rule)] p-6 relative overflow-hidden flex flex-col justify-between"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-tr from-transparent via-white/5 to-white/10 pointer-events-none" />
+                        <div 
+                          className="absolute w-40 h-40 rounded-full filter blur-[35px] opacity-35 pointer-events-none" 
+                          style={{
+                            background: product.accent,
+                            top: "-15%",
+                            right: "-15%"
+                          }}
+                        />
 
-            {/* CTAs: solid color block + outlined */}
-            <div className="pdp-cta-row">
-              <Link
-                href="/cart"
-                className="pdp-cta-primary mono-cta"
-                style={{ backgroundColor: product.accent }}
+                        {/* Pass Header */}
+                        <div className="flex justify-between items-start border-b border-white/10 pb-3 mb-5">
+                          <div>
+                            <p className="mono-label text-[8px] text-white/50 tracking-[0.2em] mb-0.5">RITUAL PASS</p>
+                            <p className="font-semibold text-base tracking-tight text-white">NUTRAVEY</p>
+                          </div>
+                          <span className="mono-label text-[8px] px-2 py-0.5 border border-white/20 text-white/80 uppercase">
+                            VIP PASS
+                          </span>
+                        </div>
+
+                        {/* Pass Body */}
+                        <div className="flex flex-col gap-3 mb-6 text-left">
+                          <div>
+                            <p className="mono-label text-[7px] text-white/40 mb-0.5">RITUAL ALLOCATED</p>
+                            <p className="font-medium text-[14px]" style={{ color: product.accent }}>{pdpTicket.flavor}</p>
+                          </div>
+                          <div>
+                            <p className="mono-label text-[7px] text-white/40 mb-0.5">HOLDER</p>
+                            <p className="font-medium text-[13px] text-white">{pdpTicket.name}</p>
+                          </div>
+                          <div>
+                            <p className="mono-label text-[7px] text-white/40 mb-0.5">INVOICE CORRESPONDENCE</p>
+                            <p className="font-mono text-[11px] text-white/70 break-all">{pdpTicket.email}</p>
+                          </div>
+                        </div>
+
+                        {/* Barcode */}
+                        <div className="flex justify-between items-end border-t border-white/10 pt-3 mt-auto">
+                          <div>
+                            <p className="mono-label text-[7px] text-white/40 mb-0.5">SLOT SERIAL</p>
+                            <p className="font-mono text-[11px] tracking-widest text-white/90">{pdpTicket.id}</p>
+                          </div>
+                          
+                          <div className="flex flex-col items-center">
+                            <svg width="76" height="20" viewBox="0 0 100 24" className="text-white/80" fill="currentColor">
+                              <rect x="0" y="0" width="3" height="24" />
+                              <rect x="5" y="0" width="1" height="24" />
+                              <rect x="8" y="0" width="4" height="24" />
+                              <rect x="14" y="0" width="2" height="24" />
+                              <rect x="18" y="0" width="1" height="24" />
+                              <rect x="21" y="0" width="3" height="24" />
+                              <rect x="26" y="0" width="5" height="24" />
+                              <rect x="33" y="0" width="1" height="24" />
+                              <rect x="36" y="0" width="2" height="24" />
+                              <rect x="40" y="0" width="4" height="24" />
+                              <rect x="46" y="0" width="1" height="24" />
+                              <rect x="49" y="0" width="3" height="24" />
+                              <rect x="54" y="0" width="6" height="24" />
+                              <rect x="62" y="0" width="2" height="24" />
+                              <rect x="66" y="0" width="1" height="24" />
+                              <rect x="69" y="0" width="3" height="24" />
+                              <rect x="74" y="0" width="4" height="24" />
+                              <rect x="80" y="0" width="1" height="24" />
+                              <rect x="83" y="0" width="2" height="24" />
+                              <rect x="87" y="0" width="5" height="24" />
+                              <rect x="94" y="0" width="1" height="24" />
+                              <rect x="97" y="0" width="3" height="24" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="mono-body text-[10px] text-[var(--color-ink-muted)] mt-2">
+                        ✓ Secured. Allocation reference code is {pdpTicket.id}.
+                      </p>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <>
+                {/* Qty selector */}
+                <div className="pdp-qty-row">
+                  <span
+                    className="mono-label"
+                    style={{ color: "var(--color-ink-muted)" }}
+                  >
+                    Quantity
+                  </span>
+                  <div className="pdp-qty">
+                    <button
+                      type="button"
+                      className="pdp-qty-btn mono-cta"
+                      aria-label="Decrease quantity"
+                      onClick={() => setQty((q) => Math.max(1, q - 1))}
+                      disabled={qty <= 1}
+                    >
+                      −
+                    </button>
+                    <span
+                      className="mono-cta"
+                      style={{ minWidth: "32px", textAlign: "center" }}
+                      aria-live="polite"
+                    >
+                      {qty}
+                    </span>
+                    <button
+                      type="button"
+                      className="pdp-qty-btn mono-cta"
+                      aria-label="Increase quantity"
+                      onClick={() => setQty((q) => Math.min(9, q + 1))}
+                      disabled={qty >= 9}
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+
+                {/* CTAs: solid color block + outlined */}
+                <div className="pdp-cta-row">
+                  <button
+                    type="button"
+                    className="pdp-cta-primary mono-cta"
+                    style={{ backgroundColor: product.accent }}
+                    onClick={addToCart}
+                    disabled={!purchasable || cartBusy}
+                    aria-busy={cartBusy}
+                  >
+                    {cartBusy
+                      ? "Adding…"
+                      : purchasable
+                        ? "Add to Cart"
+                        : "Sold Out"}
+                  </button>
+                  <button
+                    type="button"
+                    className="pdp-cta-secondary mono-cta"
+                    onClick={buyNow}
+                    disabled={!purchasable || cartBusy}
+                  >
+                    Buy Now →
+                  </button>
+                </div>
+              </>
+            )}
+            {!purchasable && (
+              <p
+                className="mono-body"
+                style={{
+                  fontSize: "11px",
+                  color: "var(--color-ink-faint)",
+                  marginTop: "12px",
+                }}
               >
-                Add to Cart
-              </Link>
-              <Link href="/cart" className="pdp-cta-secondary mono-cta">
-                Buy Now →
-              </Link>
-            </div>
+                {variantId
+                  ? "Currently unavailable."
+                  : "Storefront not connected — set your Shopify env vars to enable checkout."}
+              </p>
+            )}
           </motion.div>
         </div>
         <hr style={{ marginTop: "96px" }} />
@@ -698,14 +967,20 @@ export default function ProductDetail({ product }: ProductDetailProps) {
           justify-content: center;
           padding: 18px 28px;
           color: #FAFAFA;
+          border: none;
           border-radius: 0;
           flex: 1;
+          cursor: pointer;
           letter-spacing: 0.08em;
           transition: opacity 200ms ease, transform 200ms ease;
         }
-        .pdp-cta-primary:hover {
+        .pdp-cta-primary:hover:not(:disabled) {
           opacity: 0.88;
           transform: translateY(-1px);
+        }
+        .pdp-cta-primary:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
         }
 
         .pdp-cta-secondary {
@@ -714,12 +989,18 @@ export default function ProductDetail({ product }: ProductDetailProps) {
           justify-content: center;
           padding: 18px 24px;
           color: var(--color-ink);
+          border: none;
           border-radius: 0;
           background: transparent;
           flex-shrink: 0;
+          cursor: pointer;
           transition: opacity 200ms ease;
         }
-        .pdp-cta-secondary:hover { opacity: 0.6; }
+        .pdp-cta-secondary:hover:not(:disabled) { opacity: 0.6; }
+        .pdp-cta-secondary:disabled {
+          opacity: 0.4;
+          cursor: not-allowed;
+        }
 
         /* ── Benefits ──────────────────────────────────────────────────── */
         .pdp-benefits {

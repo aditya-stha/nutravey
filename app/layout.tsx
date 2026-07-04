@@ -5,6 +5,7 @@ import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SplashScreen from "@/components/SplashScreen";
+import ShopProviders from "@/components/providers/ShopProviders";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
@@ -51,9 +52,11 @@ export default function RootLayout({
       <body className="flex min-h-full flex-col">
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <SplashScreen />
-        <Header />
-        <main className="flex-1">{children}</main>
-        <Footer />
+        <ShopProviders>
+          <Header />
+          <main className="flex-1">{children}</main>
+          <Footer />
+        </ShopProviders>
         <Analytics />
       </body>
     </html>
