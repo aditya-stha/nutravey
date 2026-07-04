@@ -388,7 +388,10 @@ export default function PreLaunchShop() {
                     transition={{ duration: 0.5, ease: EASE }}
                     className="flex flex-col items-center"
                   >
-                    {/* Interactive 3D Card */}
+                    {/* Interactive 3D holo card. The iridescent sheen's
+                        position and the foil badge's hue rotation are driven
+                        by the same tilt values as the card itself, so the
+                        hologram shifts with viewing angle like real foil. */}
                     <div
                       onMouseMove={handleMouseMove}
                       onMouseLeave={handleMouseLeave}
@@ -400,16 +403,66 @@ export default function PreLaunchShop() {
                         transformStyle: "preserve-3d",
                         backgroundColor: "var(--color-surface-footer)",
                         color: "var(--color-cream)",
+                        borderColor: `color-mix(in srgb, ${activeAccent} 45%, transparent)`,
+                        boxShadow: `0 0 70px -22px ${activeAccent}`,
                       }}
-                      className="border border-[var(--color-rule)] p-6 relative overflow-hidden flex flex-col justify-between"
+                      className="border p-6 relative overflow-hidden flex flex-col justify-between"
                     >
+                      {/* Iridescent sheen — rides the tilt */}
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          pointerEvents: "none",
+                          background:
+                            "linear-gradient(115deg, transparent 30%, rgba(94,240,255,0.10) 42%, rgba(255,94,247,0.13) 50%, rgba(160,255,140,0.10) 58%, transparent 70%)",
+                          backgroundSize: "300% 300%",
+                          backgroundPosition: `${50 - tilt.y * 4}% ${50 - tilt.x * 4}%`,
+                          mixBlendMode: "screen",
+                          transition: reduce ? "none" : "background-position 0.15s ease-out",
+                        }}
+                      />
+                      {/* Micro scanlines */}
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          pointerEvents: "none",
+                          background:
+                            "repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 3px)",
+                        }}
+                      />
+                      {/* Spectral top edge */}
+                      <div
+                        aria-hidden="true"
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: "1px",
+                          background: `linear-gradient(90deg, transparent, rgba(94,240,255,0.5), ${activeAccent}, rgba(255,94,247,0.5), transparent)`,
+                        }}
+                      />
+
                       {/* Header */}
                       <div className="flex justify-between items-start border-b border-white/10 pb-4 mb-6">
                         <div>
                           <p className="mono-label text-[8px] text-white/50 tracking-[0.2em] mb-1">RITUAL PASS</p>
                           <p className="font-semibold text-lg tracking-tight">NUTRAVEY</p>
                         </div>
-                        <span className="mono-label text-[9px] px-2 py-0.5 border border-white/20 text-white/80 uppercase">
+                        {/* Holo-foil badge: conic border rotates with tilt */}
+                        <span
+                          className="mono-label text-[9px] px-2 py-0.5 text-white/90 uppercase"
+                          style={{
+                            border: "1px solid transparent",
+                            backgroundImage: `linear-gradient(var(--color-surface-footer), var(--color-surface-footer)), conic-gradient(from ${135 + tilt.y * 14}deg, rgba(94,240,255,0.9), ${activeAccent}, rgba(255,94,247,0.9), rgba(160,255,140,0.8), rgba(94,240,255,0.9))`,
+                            backgroundOrigin: "border-box",
+                            backgroundClip: "padding-box, border-box",
+                          }}
+                        >
                           VIP PRIORITY
                         </span>
                       </div>
