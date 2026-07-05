@@ -115,6 +115,35 @@ test("shopify webhook accepts a signed order and rejects a forged one", async ({
   expect(forged.status()).toBe(401);
 });
 
+test("batch ritual page verifies a known lot and warns on unknown", async ({
+  page,
+}) => {
+  await page.goto("/ritual/NVY-ST-2606");
+  await expect(page.getByText("This box is genuine.")).toBeVisible();
+  await expect(page.getByText("NVY-ST-2606").first()).toBeVisible();
+  await expect(page.getByText("Heavy metals")).toBeVisible();
+
+  await page.goto("/ritual/NVY-FAKE-99999");
+  await expect(page.getByText("This lot isn't recognized.")).toBeVisible();
+});
+
+test("standards batch lookup resolves a lot number", async ({ page }) => {
+  await page.goto("/standards");
+  await page.fill("#lot-input", "nvy-ly-2606");
+  await page.getByRole("button", { name: "Verify" }).click();
+  await expect(page.getByText("NVY-LY-2606").first()).toBeVisible();
+  await expect(
+    page.getByText("Label accuracy", { exact: true }),
+  ).toBeVisible();
+});
+
+test("PDP shows the FAQ", async ({ page }) => {
+  await page.goto("/products/lemon-zest");
+  await expect(page.getByText("Before you trust it.")).toBeVisible();
+  const q = page.getByText("Does L-theanine make you drowsy?");
+  await expect(q).toBeVisible();
+});
+
 test("unknown routes get the branded 404", async ({ page }) => {
   const response = await page.goto("/products/does-not-exist");
   expect(response?.status()).toBe(404);

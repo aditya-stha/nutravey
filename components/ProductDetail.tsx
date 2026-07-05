@@ -796,6 +796,48 @@ export default function ProductDetail({
         <hr />
       </section>
 
+      {/* ── FAQ — the questions people check before trusting a sachet ── */}
+      <section style={{ backgroundColor: "var(--color-surface)" }}>
+        <div
+          className="content-rail"
+          style={{ paddingTop: "96px", paddingBottom: "96px" }}
+        >
+          <p
+            className="mono-label"
+            style={{ color: product.accent, marginBottom: "16px" }}
+          >
+            Common Questions
+          </p>
+          <h2
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 500,
+              fontSize: "clamp(28px, 3.4vw, 40px)",
+              letterSpacing: "-0.015em",
+              color: "var(--color-ink)",
+              marginBottom: "40px",
+              maxWidth: "640px",
+            }}
+          >
+            Before you trust it.
+          </h2>
+          <div className="pdp-faq">
+            {product.faq.map((item) => (
+              <details key={item.q} className="pdp-faq-item">
+                <summary className="mono-cta pdp-faq-q">
+                  {item.q}
+                  <span className="pdp-faq-marker" aria-hidden="true">
+                    +
+                  </span>
+                </summary>
+                <p className="mono-body pdp-faq-a">{item.a}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+        <hr />
+      </section>
+
       {/* ── Cross-sell: also explore ─────────────────────────────────── */}
       <section style={{ backgroundColor: "var(--color-surface)" }}>
         <div
@@ -943,6 +985,44 @@ export default function ProductDetail({
           align-items: baseline;
           justify-content: space-between;
           margin-bottom: 28px;
+        }
+
+        /* ── FAQ ──────────────────────────────────────────────────────── */
+        .pdp-faq {
+          max-width: 720px;
+          border-top: 0.4px solid var(--color-rule);
+        }
+        .pdp-faq-item {
+          border-bottom: 0.4px solid var(--color-rule);
+        }
+        .pdp-faq-q {
+          display: flex;
+          align-items: baseline;
+          justify-content: space-between;
+          gap: 24px;
+          padding: 18px 0;
+          cursor: pointer;
+          color: var(--color-ink);
+          list-style: none;
+          transition: opacity 200ms ease;
+        }
+        .pdp-faq-q::-webkit-details-marker { display: none; }
+        .pdp-faq-q:hover { opacity: 0.6; }
+        .pdp-faq-marker {
+          font-family: var(--font-mono);
+          color: var(--color-ink-faint);
+          transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        .pdp-faq-item[open] .pdp-faq-marker { transform: rotate(45deg); }
+        .pdp-faq-a {
+          max-width: 560px;
+          padding: 0 0 20px;
+          font-size: 14px;
+          line-height: 1.7;
+          color: var(--color-ink-muted);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pdp-faq-marker { transition: none; }
         }
 
         /* ── Purchase mode (one-time / subscribe) ─────────────────────── */

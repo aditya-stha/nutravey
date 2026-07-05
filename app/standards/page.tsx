@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import BatchLookup from "@/components/BatchLookup";
 
 export const metadata: Metadata = {
   title: "Standards — Nutravey",
@@ -14,7 +15,7 @@ const standards = [
   },
   {
     label: "Testing",
-    body: "Every batch is third-party tested for heavy metals, microbial load, and label accuracy. We publish our certificates of analysis on request — no membership required.",
+    body: "Every batch is third-party tested for heavy metals, microbial load, and label accuracy. Certificates of analysis are published per batch — look yours up below with the lot number on your box.",
   },
   {
     label: "Disclosure",
@@ -135,6 +136,57 @@ export default function StandardsPage() {
               </li>
             ))}
           </ul>
+        </div>
+        <hr />
+      </section>
+
+      {/* The evidence — per-batch verification */}
+      <section style={{ backgroundColor: "var(--color-surface)" }}>
+        <div
+          className="content-rail"
+          style={{ paddingTop: "96px", paddingBottom: "96px" }}
+        >
+          <p
+            className="mono-label"
+            style={{
+              color: "var(--color-ink)",
+              opacity: 0.5,
+              marginBottom: "16px",
+            }}
+          >
+            The evidence
+          </p>
+          <h2
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 500,
+              fontSize: "clamp(36px, 4.5vw, 56px)",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.0,
+              color: "var(--color-ink)",
+              maxWidth: "720px",
+              marginBottom: "24px",
+            }}
+          >
+            Don&rsquo;t take the badge&rsquo;s word for it.
+          </h2>
+          <p
+            className="mono-body"
+            style={{
+              maxWidth: "560px",
+              fontSize: "15px",
+              lineHeight: 1.65,
+              color: "var(--color-ink-muted)",
+              marginBottom: "48px",
+            }}
+          >
+            Most brands show you a certification logo. We show you your
+            batch&rsquo;s lab record. Every box carries a lot number — enter it
+            here for that run&rsquo;s production date, facility, and
+            third-party test results. New records publish as each batch clears
+            testing.
+          </p>
+          <BatchLookup />
         </div>
         <hr />
       </section>

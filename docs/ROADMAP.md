@@ -37,14 +37,14 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 
 ## 3 — Trust depth (leapfrog their badge-level trust)
 
-- [ ] Evidence-based /standards: per-batch third-party COAs (vs their single
+- [x] Evidence-based /standards: per-batch third-party COAs (vs their single
       Informed Sport badge)
-- [ ] Batch lookup: lot number → lab results, production date, facility
-- [ ] /ritual/[batch] QR experience: box → verification, batch COA,
+- [x] Batch lookup: lot number → lab results, production date, facility
+- [x] /ritual/[batch] QR experience: box → verification, batch COA,
       flavour-matched ritual guidance, one-tap refill
 - [ ] Reviews program from day one (you: pick Judge.me / Shopify reviews;
       seed from reservation customers post-launch)
-- [ ] PDP FAQ content in brand voice (calories, fasting, caffeine, vegan —
+- [x] PDP FAQ content in brand voice (calories, fasting, caffeine, vegan —
       they answer these; we should too)
 
 ## 4 — Architecture lead (keep doing what a theme can't)
