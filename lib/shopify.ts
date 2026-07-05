@@ -97,32 +97,36 @@ export async function storefrontQuery<T>(
   return json.data;
 }
 
-const PRODUCT_BY_HANDLE = /* GraphQL */ `
-  query ProductByHandle($handle: String!) {
-    product(handle: $handle) {
-      id
-      handle
-      availableForSale
-      variants(first: 1) {
-        nodes {
-          id
-          availableForSale
-          price {
-            amount
-            currencyCode
+const CATALOG_QUERY = /* GraphQL */ `
+  query Catalog {
+    products(first: 20) {
+      nodes {
+        id
+        handle
+        title
+        availableForSale
+        variants(first: 20) {
+          nodes {
+            id
+            title
+            availableForSale
+            price {
+              amount
+              currencyCode
+            }
           }
         }
-      }
-      sellingPlanGroups(first: 3) {
-        nodes {
-          sellingPlans(first: 6) {
-            nodes {
-              id
-              name
-              priceAdjustments {
-                adjustmentValue {
-                  ... on SellingPlanPercentagePriceAdjustment {
-                    adjustmentPercentage
+        sellingPlanGroups(first: 3) {
+          nodes {
+            sellingPlans(first: 6) {
+              nodes {
+                id
+                name
+                priceAdjustments {
+                  adjustmentValue {
+                    ... on SellingPlanPercentagePriceAdjustment {
+                      adjustmentPercentage
+                    }
                   }
                 }
               }
@@ -134,76 +138,119 @@ const PRODUCT_BY_HANDLE = /* GraphQL */ `
   }
 `;
 
-interface ProductByHandleResponse {
-  product: {
-    id: string;
-    handle: string;
-    availableForSale: boolean;
-    variants: {
-      nodes: Array<{
-        id: string;
-        availableForSale: boolean;
-        price: Money;
-      }>;
-    };
-    sellingPlanGroups: {
-      nodes: Array<{
-        sellingPlans: {
-          nodes: Array<{
-            id: string;
-            name: string;
-            priceAdjustments: Array<{
-              adjustmentValue: { adjustmentPercentage?: number };
+interface CatalogResponse {
+  products: {
+    nodes: Array<{
+      id: string;
+      handle: string;
+      title: string;
+      availableForSale: boolean;
+      variants: {
+        nodes: Array<{
+          id: string;
+          title: string;
+          availableForSale: boolean;
+          price: Money;
+        }>;
+      };
+      sellingPlanGroups: {
+        nodes: Array<{
+          sellingPlans: {
+            nodes: Array<{
+              id: string;
+              name: string;
+              priceAdjustments: Array<{
+                adjustmentValue: { adjustmentPercentage?: number };
+              }>;
             }>;
-          }>;
-        };
-      }>;
-    };
-  } | null;
+          };
+        }>;
+      };
+    }>;
+  };
+}
+
+type CatalogProduct = CatalogResponse["products"]["nodes"][number];
+
+const norm = (s: string) => s.trim().toLowerCase();
+
+/* Slug → the human name to match against Shopify variant/product titles.
+   The store models the flavour line as ONE product ("Electrolytes Powder
+   Mix") with a variant per flavour, so we match by *title*, not by handle —
+   titles are what the merchant deliberately controls in admin. */
+const SLUG_TO_NAME: Record<string, string> = {
+  "strawberry-surge": "Strawberry Surge",
+  "lychee-lush": "Lychee Lush",
+  "lemon-zest": "Lemon Zest",
+  "the-curation": "The Curation",
+};
+
+function normalizePlans(product: CatalogProduct): SubscriptionPlan[] {
+  return product.sellingPlanGroups.nodes.flatMap((group) =>
+    group.sellingPlans.nodes.map((plan) => ({
+      id: plan.id,
+      name: plan.name,
+      percentOff: plan.priceAdjustments[0]?.adjustmentValue
+        ?.adjustmentPercentage,
+    })),
+  );
 }
 
 /**
- * Loads live commerce data for a product by its Shopify handle (which we map
- * 1:1 to the local product `slug`). Returns `null` when Shopify isn't
- * configured or the product / variant doesn't exist — callers fall back to
- * the static price from `lib/products.ts` and disable add-to-cart.
+ * Loads live commerce data for a local product slug. Matching order:
+ * 1. a variant whose title equals the flavour name (variant-based catalog);
+ * 2. a product whose handle equals the slug or title equals the name
+ *    (separate-products catalog, e.g. The Curation).
+ * Returns `null` when Shopify is unreachable/unconfigured or nothing
+ * matches — callers fall back to static pricing and disable add-to-cart.
  */
 export async function getShopifyProduct(
-  handle: string,
+  slug: string,
 ): Promise<ShopifyProductData | null> {
   // Product data works tokenless — only the domain is required.
   if (!SHOPIFY_STORE_DOMAIN) return null;
 
+  const name = norm(SLUG_TO_NAME[slug] ?? slug);
+
   try {
-    const { product } = await storefrontQuery<ProductByHandleResponse>(
-      PRODUCT_BY_HANDLE,
-      { handle },
+    const { products } = await storefrontQuery<CatalogResponse>(CATALOG_QUERY);
+
+    // 1. Variant title match anywhere in the catalog.
+    for (const product of products.nodes) {
+      const variant = product.variants.nodes.find(
+        (v) => norm(v.title) === name,
+      );
+      if (variant) {
+        return {
+          id: product.id,
+          handle: slug,
+          available: product.availableForSale && variant.availableForSale,
+          variantId: variant.id,
+          price: variant.price,
+          subscriptionPlans: normalizePlans(product),
+        };
+      }
+    }
+
+    // 2. Whole-product match by handle or title.
+    const product = products.nodes.find(
+      (p) => p.handle === slug || norm(p.title) === name,
     );
     const variant = product?.variants.nodes[0];
     if (!product || !variant) return null;
 
-    const subscriptionPlans: SubscriptionPlan[] =
-      product.sellingPlanGroups.nodes.flatMap((group) =>
-        group.sellingPlans.nodes.map((plan) => ({
-          id: plan.id,
-          name: plan.name,
-          percentOff: plan.priceAdjustments[0]?.adjustmentValue
-            ?.adjustmentPercentage,
-        })),
-      );
-
     return {
       id: product.id,
-      handle: product.handle,
+      handle: slug,
       available: product.availableForSale && variant.availableForSale,
       variantId: variant.id,
       price: variant.price,
-      subscriptionPlans,
+      subscriptionPlans: normalizePlans(product),
     };
   } catch (err) {
     // Don't take the whole PDP down if Storefront is briefly unreachable —
     // fall back to static pricing and a disabled cart button.
-    console.error(`getShopifyProduct("${handle}") failed:`, err);
+    console.error(`getShopifyProduct("${slug}") failed:`, err);
     return null;
   }
 }
