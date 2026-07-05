@@ -1,5 +1,18 @@
 import { test, expect, type Page } from "@playwright/test";
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
+
+/* NEXT_PUBLIC_PRE_LAUNCH is inlined at build time from .env.local, so the
+   suite reads the same file to know which storefront mode it is testing.
+   No .env.local (CI) = pre-launch, matching the app default. */
+const envLocal = (() => {
+  try {
+    return readFileSync(".env.local", "utf8");
+  } catch {
+    return "";
+  }
+})();
+const preLaunch = !/^NEXT_PUBLIC_PRE_LAUNCH=false/m.test(envLocal);
 
 /* Money-path smoke tests. Pre-launch mode is the default (NEXT_PUBLIC_PRE_LAUNCH
    unset), so /shop is the reservation exhibition and checkout is offline. */
@@ -27,18 +40,33 @@ test("product page shows name and price", async ({ page }) => {
   await expect(page.getByText("$42").first()).toBeVisible();
 });
 
-test("shop shows the pre-launch reservation exhibition", async ({ page }) => {
+test("shop renders the mode-appropriate storefront", async ({ page }) => {
   await page.goto("/shop");
-  await expect(
-    page.getByRole("heading", { name: /Reserve Your Ritual/i }),
-  ).toBeVisible();
-  await expect(page.locator("#email-input")).toBeAttached();
+  if (preLaunch) {
+    await expect(
+      page.getByRole("heading", { name: /Reserve Your Ritual/i }),
+    ).toBeVisible();
+    await expect(page.locator("#email-input")).toBeAttached();
+  } else {
+    await expect(
+      page.getByRole("heading", { name: /The Collection/i }),
+    ).toBeVisible();
+  }
 });
 
-test("cart page renders the pre-launch notice", async ({ page }) => {
+test("cart page renders the mode-appropriate state", async ({ page }) => {
   await page.goto("/cart");
   await expect(page.getByRole("heading", { name: "Cart" })).toBeVisible();
-  await expect(page.getByText(/pre-launch reservation phase/i)).toBeVisible();
+  if (preLaunch) {
+    await expect(
+      page.getByText(/pre-launch reservation phase/i),
+    ).toBeVisible();
+  } else {
+    // Live mode without Shopify credentials: honest unconfigured notice.
+    await expect(
+      page.getByText(/storefront isn.t connected|Your cart is empty/i),
+    ).toBeVisible();
+  }
 });
 
 test("waitlist API accepts a reservation and issues a working pass link", async ({
