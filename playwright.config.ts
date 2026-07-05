@@ -9,11 +9,13 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? "github" : "list",
   use: {
-    baseURL: "http://localhost:3000",
+    // Own port — never collides with (or reuses) the dev server on 3000,
+    // which wouldn't have the smoke-test webhook secret.
+    baseURL: "http://localhost:3005",
   },
   webServer: {
-    command: "npm run start",
-    url: "http://localhost:3000",
+    command: "npm run start -- -p 3005",
+    url: "http://localhost:3005",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     // Lets the webhook smoke tests sign payloads the server will accept.
