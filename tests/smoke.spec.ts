@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { createHmac } from "node:crypto";
 
 /* Money-path smoke tests. Pre-launch mode is the default (NEXT_PUBLIC_PRE_LAUNCH
    unset), so /shop is the reservation exhibition and checkout is offline. */
@@ -78,6 +79,40 @@ test("waitlist API rejects a bad payload", async ({ request }) => {
     data: { name: "", email: "not-an-email", item: "nope" },
   });
   expect(res.status()).toBe(400);
+});
+
+test("shopify webhook accepts a signed order and rejects a forged one", async ({
+  request,
+}) => {
+  const body = JSON.stringify({
+    id: 987654321,
+    total_price: "108.00",
+    currency: "USD",
+    line_items: [{ quantity: 1 }],
+  });
+  const hmac = createHmac("sha256", "smoke-test-webhook-secret")
+    .update(body, "utf8")
+    .digest("base64");
+
+  const signed = await request.post("/api/webhooks/shopify", {
+    headers: {
+      "Content-Type": "application/json",
+      "x-shopify-topic": "orders/create",
+      "x-shopify-hmac-sha256": hmac,
+    },
+    data: body,
+  });
+  expect(signed.status()).toBe(200);
+
+  const forged = await request.post("/api/webhooks/shopify", {
+    headers: {
+      "Content-Type": "application/json",
+      "x-shopify-topic": "orders/create",
+      "x-shopify-hmac-sha256": "Zm9yZ2VkLXNpZ25hdHVyZQ==",
+    },
+    data: body,
+  });
+  expect(forged.status()).toBe(401);
 });
 
 test("unknown routes get the branded 404", async ({ page }) => {

@@ -3,6 +3,7 @@
 import { useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Script from "next/script";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { products, curation } from "@/lib/products";
 import { track } from "@/lib/analytics";
@@ -30,8 +31,14 @@ const atmospheres: Record<string, { bg: string; textAccent: string }> = {
   },
 };
 
+const VALID_ITEMS = new Set([...products.map((p) => p.id), "bundle"]);
+
 export default function PreLaunchShop() {
-  const [selectedItem, setSelectedItem] = useState<string>("strawberry"); // strawberry | lychee | lemon | bundle
+  // Deep-linkable selection (e.g. the bundle PDP links to /shop?item=bundle).
+  const requested = useSearchParams().get("item");
+  const [selectedItem, setSelectedItem] = useState<string>(
+    requested && VALID_ITEMS.has(requested) ? requested : "strawberry",
+  ); // strawberry | lychee | lemon | bundle
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [honeypot, setHoneypot] = useState("");

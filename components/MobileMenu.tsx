@@ -117,7 +117,7 @@ export default function MobileMenu({ links }: MobileMenuProps) {
           height: 36px;
           background: transparent;
           border: none;
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           padding: 0;
           color: var(--color-ink);
           cursor: pointer;

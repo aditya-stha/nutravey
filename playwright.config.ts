@@ -16,5 +16,7 @@ export default defineConfig({
     url: "http://localhost:3000",
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    // Lets the webhook smoke tests sign payloads the server will accept.
+    env: { SHOPIFY_WEBHOOK_SECRET: "smoke-test-webhook-secret" },
   },
 });

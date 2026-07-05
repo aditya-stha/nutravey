@@ -902,7 +902,7 @@ export default function ProductDetail({
           background: transparent;
           color: var(--color-ink);
           border: 0.4px solid var(--color-rule);
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           padding: 0;
           cursor: pointer;
           font-size: 16px;
@@ -930,7 +930,7 @@ export default function ProductDetail({
           padding: 18px 28px;
           color: #FAFAFA;
           border: none;
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           flex: 1;
           cursor: pointer;
           letter-spacing: 0.08em;
@@ -952,7 +952,7 @@ export default function ProductDetail({
           padding: 18px 24px;
           color: var(--color-ink);
           border: none;
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           background: transparent;
           flex-shrink: 0;
           cursor: pointer;

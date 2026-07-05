@@ -4,13 +4,49 @@ import { useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import { useCart } from "@shopify/hydrogen-react";
 import { products, curation } from "@/lib/products";
+import { isPreLaunch } from "@/lib/shopify-config";
+import { track } from "@/lib/analytics";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
-export default function CurationDetail() {
+interface CurationDetailProps {
+  /** Shopify variant GID for the bundle product; absent when Shopify isn't
+   *  configured or the bundle isn't published — CTAs disable. */
+  variantId?: string;
+  available?: boolean;
+}
+
+export default function CurationDetail({
+  variantId,
+  available = false,
+}: CurationDetailProps) {
   const reduce = useReducedMotion();
   const [qty, setQty] = useState(1);
+
+  const { linesAdd, status, checkoutUrl } = useCart();
+  const cartBusy = status === "creating" || status === "updating";
+  const purchasable = Boolean(variantId) && available;
+
+  function addToCart(): boolean {
+    if (!variantId || !purchasable || cartBusy) return false;
+    linesAdd([{ merchandiseId: variantId, quantity: qty }]);
+    track("add_to_cart", {
+      item_id: curation.slug,
+      item_name: curation.name,
+      quantity: qty,
+      price: curation.bundlePrice,
+      currency: "USD",
+    });
+    return true;
+  }
+
+  function buyNow() {
+    if (!addToCart()) return;
+    track("begin_checkout", { item_id: curation.slug, source: "buy_now" });
+    window.location.href = checkoutUrl ?? "/cart";
+  }
 
   return (
     <>
@@ -199,19 +235,56 @@ export default function CurationDetail() {
               </div>
             </div>
 
-            {/* CTAs — primary uses oxblood (neutral brand) for the bundle */}
-            <div className="cur-cta-row">
-              <Link
-                href="/cart"
-                className="cur-cta-primary mono-cta"
-                style={{ backgroundColor: "var(--color-oxblood)" }}
-              >
-                Add Curation to Cart
-              </Link>
-              <Link href="/cart" className="cur-cta-secondary mono-cta">
-                Buy Now →
-              </Link>
-            </div>
+            {/* CTAs — primary uses oxblood (neutral brand) for the bundle.
+                Pre-launch: route to the reservation exhibition with the
+                bundle preselected. Live: real Storefront cart mutations. */}
+            {isPreLaunch ? (
+              <div className="cur-cta-row">
+                <Link
+                  href="/shop?item=bundle"
+                  className="cur-cta-primary mono-cta"
+                  style={{ backgroundColor: "var(--color-oxblood)" }}
+                >
+                  Reserve the Curation →
+                </Link>
+              </div>
+            ) : (
+              <>
+                <div className="cur-cta-row">
+                  <button
+                    type="button"
+                    className="cur-cta-primary mono-cta"
+                    style={{ backgroundColor: "var(--color-oxblood)" }}
+                    onClick={addToCart}
+                    disabled={!purchasable || cartBusy}
+                  >
+                    {cartBusy ? "Adding…" : "Add Curation to Cart"}
+                  </button>
+                  <button
+                    type="button"
+                    className="cur-cta-secondary mono-cta"
+                    onClick={buyNow}
+                    disabled={!purchasable || cartBusy}
+                  >
+                    Buy Now →
+                  </button>
+                </div>
+                {!purchasable && (
+                  <p
+                    className="mono-body"
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--color-ink-faint)",
+                      marginTop: "12px",
+                    }}
+                  >
+                    {variantId
+                      ? "Currently unavailable."
+                      : "The bundle isn't connected to the storefront yet."}
+                  </p>
+                )}
+              </>
+            )}
           </motion.div>
         </div>
         <hr style={{ marginTop: "96px" }} />
@@ -572,7 +645,7 @@ export default function CurationDetail() {
           background: transparent;
           color: var(--color-ink);
           border: 0.4px solid var(--color-rule);
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           padding: 0;
           cursor: pointer;
           font-size: 16px;
@@ -597,7 +670,7 @@ export default function CurationDetail() {
           justify-content: center;
           padding: 18px 28px;
           color: #FAFAFA;
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           flex: 1;
           letter-spacing: 0.08em;
           transition: opacity 200ms ease, transform 200ms ease;
@@ -609,10 +682,16 @@ export default function CurationDetail() {
           justify-content: center;
           padding: 18px 24px;
           color: var(--color-ink);
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           background: transparent;
           flex-shrink: 0;
           transition: opacity 200ms ease;
+        }
+        /* CTAs render as <button> when the store is live */
+        .cur-cta-primary, .cur-cta-secondary { border: none; cursor: pointer; }
+        .cur-cta-primary:disabled, .cur-cta-secondary:disabled {
+          opacity: 0.45;
+          cursor: not-allowed;
         }
         .cur-cta-secondary:hover { opacity: 0.6; }
 

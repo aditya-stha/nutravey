@@ -457,7 +457,7 @@ export default function ShopCollection() {
           width: 100%;
           padding: 16px 20px;
           color: #FAFAFA;
-          border-radius: 0;
+          border-radius: var(--radius-canvas);
           letter-spacing: 0.08em;
           transition: opacity 200ms ease, transform 200ms ease;
         }
