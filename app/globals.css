@@ -248,3 +248,40 @@ select,
 textarea {
   border-radius: var(--radius-canvas);
 }
+
+/* ─── Product canvas glow ───────────────────────────────────────────────────
+   ONE spec for every product-image canvas on the site. Place a .canvas-glow
+   sibling behind the squircle, set --flavor on an ancestor, and add
+   .canvas-hover to the hover root (or drive it with data-self-hovered). */
+.canvas-glow {
+  position: absolute;
+  inset: -8%;
+  z-index: -1;
+  background: radial-gradient(
+    ellipse at center,
+    var(--flavor) 0%,
+    var(--flavor) 16%,
+    transparent 68%
+  );
+  filter: blur(56px);
+  opacity: 0;
+  transform: scale(0.88);
+  transition:
+    opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
+    transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+  will-change: opacity, transform;
+}
+/* The hover root isolates its stacking context so the z-index:-1 glow sits
+   behind the canvas but still above ancestor/section backgrounds. */
+.canvas-hover {
+  isolation: isolate;
+}
+.canvas-hover:hover .canvas-glow,
+[data-self-hovered="true"] .canvas-glow {
+  opacity: 0.95;
+  transform: scale(1.25);
+}
+@media (prefers-reduced-motion: reduce) {
+  .canvas-glow { transition: none; }
+}

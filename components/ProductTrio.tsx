@@ -138,7 +138,7 @@ export default function ProductTrio() {
               <motion.div
                 key={product.id}
                 variants={itemVariants}
-                className="product-card"
+                className="product-card canvas-hover"
                 data-position={product.position}
                 data-self-hovered={isHovered ? "true" : undefined}
                 data-group-hovered={groupHovered ? "true" : undefined}
@@ -148,7 +148,7 @@ export default function ProductTrio() {
               >
                 {/* Glow — sibling of the squircle so it blooms OUTSIDE the
                     clipped frame. Behind everything via z-index: -1. */}
-                <div className="product-glow" aria-hidden="true" />
+                <div className="canvas-glow" aria-hidden="true" />
 
                 {/* Squircle frame — tight clip, transparent bg, image fills. */}
                 <div className="product-squircle">
@@ -287,35 +287,6 @@ export default function ProductTrio() {
           }
         }
 
-        /* ── Flavour glow — sibling of the squircle, behind the card.
-              More saturated centre + less blur → pronounced bloom that
-              clearly breaks outside the squircle. ── */
-        .product-glow {
-          position: absolute;
-          inset: -10%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            var(--flavor) 18%,
-            transparent 70%
-          );
-          filter: blur(60px);
-          opacity: 0;
-          transform: scale(0.85);
-          transition:
-            opacity 700ms cubic-bezier(0.22, 1, 0.36, 1),
-            transform 700ms cubic-bezier(0.22, 1, 0.36, 1);
-          pointer-events: none;
-          will-change: opacity, transform;
-        }
-
-        .product-card[data-self-hovered="true"] .product-glow,
-        .product-card:hover .product-glow {
-          opacity: 1;
-          transform: scale(1.35);
-        }
-
         /* ── Tight squircle frame ───────────────────────────────────── */
         .product-squircle {
           position: relative;
@@ -351,13 +322,6 @@ export default function ProductTrio() {
           .product-card[data-position="right"]:hover {
             transform: none;
             transition: none;
-          }
-          .product-glow {
-            transition: opacity 200ms linear;
-          }
-          .product-card:hover .product-glow,
-          .product-card[data-self-hovered="true"] .product-glow {
-            transform: scale(1);
           }
         }
       `}</style>

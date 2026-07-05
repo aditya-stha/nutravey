@@ -134,10 +134,10 @@ export default function ShopCollection() {
                   {/* Visual: glow sibling + clipped squircle frame */}
                   <Link
                     href={`/products/${product.slug}`}
-                    className="shop-card-visual"
+                    className="shop-card-visual canvas-hover"
                     aria-label={`View ${product.name}`}
                   >
-                    <div className="shop-glow" aria-hidden="true" />
+                    <div className="canvas-glow" aria-hidden="true" />
                     <div className="shop-squircle">
                       <Image
                         src={product.image}
@@ -320,7 +320,7 @@ export default function ShopCollection() {
             </div>
 
             {/* Mini-stack of the three product mocks */}
-            <div className="shop-curation-stack" aria-hidden="true">
+            <div className="shop-curation-stack canvas-hover" aria-hidden="true">
               {products.map((p, i) => (
                 <div
                   key={p.id}
@@ -332,7 +332,7 @@ export default function ShopCollection() {
                     } as CSSProperties
                   }
                 >
-                  <div className="shop-curation-glow" />
+                  <div className="canvas-glow" />
                   <div className="shop-curation-squircle">
                     <Image
                       src={p.image}
@@ -383,30 +383,6 @@ export default function ShopCollection() {
           display: block;
           width: 100%;
           margin-bottom: 24px;
-        }
-
-        .shop-glow {
-          position: absolute;
-          inset: -8%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            var(--flavor) 16%,
-            transparent 68%
-          );
-          filter: blur(56px);
-          opacity: 0;
-          transform: scale(0.88);
-          transition:
-            opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
-            transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
-          pointer-events: none;
-        }
-        .shop-card[data-self-hovered="true"] .shop-glow,
-        .shop-card-visual:hover .shop-glow {
-          opacity: 0.95;
-          transform: scale(1.25);
         }
 
         .shop-squircle {
@@ -557,20 +533,6 @@ export default function ShopCollection() {
           transform: translateY(-50%) rotate(8deg);
           z-index: 2;
         }
-
-        .shop-curation-glow {
-          position: absolute;
-          inset: -14%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            transparent 65%
-          );
-          filter: blur(56px);
-          opacity: 0.78;
-          pointer-events: none;
-        }
         .shop-curation-squircle {
           position: relative;
           width: 100%;
@@ -580,7 +542,6 @@ export default function ShopCollection() {
         }
 
         @media (prefers-reduced-motion: reduce) {
-          .shop-glow,
           .shop-squircle,
           .shop-add-button { transition: none; }
           .shop-card-visual:hover .shop-squircle,

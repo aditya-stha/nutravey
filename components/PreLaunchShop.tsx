@@ -204,10 +204,10 @@ export default function PreLaunchShop() {
                     className="flex flex-col md:flex-row gap-8 items-center"
                   >
                     <div
-                      className="prelaunch-visual flex-shrink-0"
+                      className="prelaunch-visual canvas-hover flex-shrink-0"
                       style={{ "--flavor": activeProduct.accent } as CSSProperties}
                     >
-                      <div className="prelaunch-glow" aria-hidden="true" />
+                      <div className="canvas-glow" aria-hidden="true" />
                       <div className="prelaunch-squircle">
                         <Image
                           src={activeProduct.image}
@@ -256,14 +256,14 @@ export default function PreLaunchShop() {
                   >
                     {/* The bundle IS the three products — same fanned stack
                         as the shop's curation card, in miniature. */}
-                    <div className="prelaunch-stack flex-shrink-0" aria-hidden="true">
+                    <div className="prelaunch-stack canvas-hover flex-shrink-0" aria-hidden="true">
                       {products.map((p) => (
                         <div
                           key={p.id}
                           className="prelaunch-tile"
                           style={{ "--flavor": p.accent } as CSSProperties}
                         >
-                          <div className="prelaunch-tile-glow" />
+                          <div className="canvas-glow" />
                           <div className="prelaunch-squircle">
                             <Image
                               src={p.image}
@@ -449,36 +449,12 @@ export default function PreLaunchShop() {
       </section>
 
       <style>{`
-        /* ── Product visual canvas — mirrors .shop-glow / .shop-squircle ── */
+        /* ── Product visual canvas — glow comes from the global .canvas-glow ── */
         .prelaunch-visual {
           position: relative;
           width: 192px;
           aspect-ratio: 4 / 5;
-        }
-        .prelaunch-glow {
-          position: absolute;
-          inset: -8%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            var(--flavor) 16%,
-            transparent 68%
-          );
-          filter: blur(56px);
-          opacity: 0;
-          transform: scale(0.88);
-          transition:
-            opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
-            transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
-          pointer-events: none;
-        }
-        .prelaunch-visual:hover .prelaunch-glow,
-        .prelaunch-stack:hover .prelaunch-tile-glow {
-          opacity: 0.95;
-          transform: scale(1.25);
-        }
-        .prelaunch-squircle {
+        }        .prelaunch-squircle {
           position: relative;
           width: 100%;
           height: 100%;
@@ -519,29 +495,8 @@ export default function PreLaunchShop() {
           transform: translateY(-50%) rotate(8deg);
           z-index: 2;
         }
-        .prelaunch-tile-glow {
-          position: absolute;
-          inset: -14%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            transparent 65%
-          );
-          filter: blur(40px);
-          opacity: 0.5;
-          transform: scale(1);
-          transition:
-            opacity 600ms cubic-bezier(0.22, 1, 0.36, 1),
-            transform 600ms cubic-bezier(0.22, 1, 0.36, 1);
-          pointer-events: none;
-        }
-
         @media (prefers-reduced-motion: reduce) {
-          .prelaunch-glow,
-          .prelaunch-squircle,
-          .prelaunch-tile-glow { transition: none; }
-          .prelaunch-visual:hover .prelaunch-squircle { transform: none; }
+          .prelaunch-squircle,          .prelaunch-visual:hover .prelaunch-squircle { transform: none; }
         }
       `}</style>
     </div>

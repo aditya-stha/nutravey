@@ -143,12 +143,12 @@ export default function ProductDetail({
         <div className="content-rail pdp-hero-rail">
           {/* Left — large product image with radial glow */}
           <motion.div
-            className="pdp-visual"
+            className="pdp-visual canvas-hover"
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: EASE }}
           >
-            <div className="pdp-glow" aria-hidden="true" />
+            <div className="canvas-glow" aria-hidden="true" />
             <div className="pdp-squircle">
               <Image
                 src={product.image}
@@ -754,11 +754,11 @@ export default function ProductDetail({
               <Link
                 key={p.id}
                 href={`/products/${p.slug}`}
-                className="pdp-related-card"
+                className="pdp-related-card canvas-hover"
                 style={{ "--flavor": p.accent } as CSSProperties}
               >
                 <div className="pdp-related-visual">
-                  <div className="pdp-related-glow" aria-hidden="true" />
+                  <div className="canvas-glow" aria-hidden="true" />
                   <div className="pdp-related-squircle">
                     <Image
                       src={p.image}
@@ -841,21 +841,6 @@ export default function ProductDetail({
         }
         @media (min-width: 900px) {
           .pdp-visual { margin: 0; }
-        }
-
-        .pdp-glow {
-          position: absolute;
-          inset: -14%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            var(--flavor) 18%,
-            transparent 68%
-          );
-          filter: blur(80px);
-          opacity: 1;
-          pointer-events: none;
         }
 
         .pdp-squircle {
@@ -1035,22 +1020,6 @@ export default function ProductDetail({
           aspect-ratio: 4 / 5;
           margin-bottom: 16px;
         }
-        .pdp-related-glow {
-          position: absolute;
-          inset: -8%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            transparent 65%
-          );
-          filter: blur(48px);
-          opacity: 0;
-          transition: opacity 400ms ease;
-          pointer-events: none;
-        }
-        .pdp-related-card:hover .pdp-related-glow { opacity: 0.7; }
-
         .pdp-related-squircle {
           position: relative;
           width: 100%;

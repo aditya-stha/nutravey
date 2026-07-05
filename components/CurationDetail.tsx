@@ -75,7 +75,7 @@ export default function CurationDetail({
         <div className="content-rail cur-hero-rail">
           {/* Left — stacked composition of all three products */}
           <motion.div
-            className="cur-stage"
+            className="cur-stage canvas-hover"
             initial={reduce ? false : { opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: EASE }}
@@ -89,7 +89,7 @@ export default function CurationDetail({
                   { "--flavor": p.accent, "--i": i } as CSSProperties
                 }
               >
-                <div className="cur-tile-glow" aria-hidden="true" />
+                <div className="canvas-glow" aria-hidden="true" />
                 <div className="cur-tile-squircle">
                   <Image
                     src={p.image}
@@ -587,26 +587,6 @@ export default function CurationDetail({
           top: 26%;
           transform: rotate(7deg);
           z-index: 1;
-        }
-
-        .cur-tile-glow {
-          position: absolute;
-          inset: -14%;
-          z-index: -1;
-          background: radial-gradient(
-            ellipse at center,
-            var(--flavor) 0%,
-            var(--flavor) 18%,
-            transparent 68%
-          );
-          filter: blur(64px);
-          opacity: 0.95;
-          pointer-events: none;
-        }
-        .cur-tile[data-pos="center"] .cur-tile-glow {
-          inset: -22%;
-          filter: blur(80px);
-          opacity: 1;
         }
 
         .cur-tile-squircle {
