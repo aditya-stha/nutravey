@@ -6,7 +6,7 @@ import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
 import { useCart } from "@shopify/hydrogen-react";
 import { products, curation } from "@/lib/products";
-import { isPreLaunch } from "@/lib/shopify-config";
+import { isPreLaunch, isShopifyConfigured } from "@/lib/shopify-config";
 import { track } from "@/lib/analytics";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -27,7 +27,8 @@ export default function CurationDetail({
 
   const { linesAdd, status, checkoutUrl } = useCart();
   const cartBusy = status === "creating" || status === "updating";
-  const purchasable = Boolean(variantId) && available;
+  // Cart mutations need the public token even when product data is tokenless.
+  const purchasable = Boolean(variantId) && available && isShopifyConfigured;
 
   function addToCart(): boolean {
     if (!variantId || !purchasable || cartBusy) return false;
@@ -278,9 +279,11 @@ export default function CurationDetail({
                       marginTop: "12px",
                     }}
                   >
-                    {variantId
-                      ? "Currently unavailable."
-                      : "The bundle isn't connected to the storefront yet."}
+                    {!variantId
+                      ? "The bundle isn't connected to the storefront yet."
+                      : !isShopifyConfigured
+                        ? "Live pricing connected — add the Storefront token to open the cart."
+                        : "Currently unavailable."}
                   </p>
                 )}
               </>

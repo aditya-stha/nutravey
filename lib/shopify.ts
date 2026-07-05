@@ -1,38 +1,41 @@
 import "server-only";
 
 /* ─── Server-side Storefront API client ────────────────────────────────────
-   Runs only in Server Components / Route Handlers. Prefers the private
-   (delegate) token when present for higher rate limits; otherwise falls back
-   to the public token. Used to load live commerce data (variant id, price,
-   availability) that is then merged with the editorial product data in
-   `lib/products.ts`. The cart itself is handled client-side by CartProvider. */
+   Runs only in Server Components / Route Handlers. Loads live commerce data
+   (variant id, price, availability, selling plans) that is merged with the
+   editorial product data in `lib/products.ts`. The cart itself is handled
+   client-side by CartProvider.
 
-import { createStorefrontClient } from "@shopify/hydrogen-react";
+   Auth tiers, best-available first:
+   1. Private (delegate) token — server rate limits.
+   2. Public storefront token.
+   3. Tokenless — products/selling plans need no token at all (complexity
+      limit 1,000; our queries are far below). Requires only the domain, so
+      live product data flows before any credentials exist. The cart still
+      needs the public token (CartProvider authenticates with it). */
+
 import {
   SHOPIFY_STORE_DOMAIN,
   SHOPIFY_STOREFRONT_TOKEN,
   SHOPIFY_STOREFRONT_API_VERSION,
-  isShopifyConfigured,
 } from "@/lib/shopify-config";
 
 const privateToken = process.env.SHOPIFY_STOREFRONT_PRIVATE_TOKEN || undefined;
 
-/* Created lazily and memoized: `createStorefrontClient` throws in production
-   if `storeDomain` is empty, so we only instantiate it once we know the
-   storefront is configured (callers guard on `isShopifyConfigured` first). */
-type StorefrontClient = ReturnType<typeof createStorefrontClient>;
-let _client: StorefrontClient | undefined;
-
-function getClient(): StorefrontClient {
-  if (!_client) {
-    _client = createStorefrontClient({
-      storeDomain: SHOPIFY_STORE_DOMAIN,
-      storefrontApiVersion: SHOPIFY_STOREFRONT_API_VERSION,
-      privateStorefrontToken: privateToken,
-      publicStorefrontToken: SHOPIFY_STOREFRONT_TOKEN,
-    });
+function storefrontHeaders(): Record<string, string> {
+  if (privateToken) {
+    return {
+      "Content-Type": "application/json",
+      "Shopify-Storefront-Private-Token": privateToken,
+    };
   }
-  return _client;
+  if (SHOPIFY_STOREFRONT_TOKEN) {
+    return {
+      "Content-Type": "application/json",
+      "X-Shopify-Storefront-Access-Token": SHOPIFY_STOREFRONT_TOKEN,
+    };
+  }
+  return { "Content-Type": "application/json" }; // tokenless
 }
 
 /** Money as returned by the Storefront API. */
@@ -66,20 +69,17 @@ export interface ShopifyProductData {
 
 /**
  * Low-level Storefront API GraphQL fetch. Throws on network / GraphQL errors.
- * Uses the private token headers when available, public otherwise.
+ * Uses the best available auth tier (private → public → tokenless).
  */
 export async function storefrontQuery<T>(
   query: string,
   variables: Record<string, unknown> = {},
 ): Promise<T> {
-  const client = getClient();
-  const headers = privateToken
-    ? client.getPrivateTokenHeaders()
-    : client.getPublicTokenHeaders();
+  const url = `https://${SHOPIFY_STORE_DOMAIN}/api/${SHOPIFY_STOREFRONT_API_VERSION}/graphql.json`;
 
-  const res = await fetch(client.getStorefrontApiUrl(), {
+  const res = await fetch(url, {
     method: "POST",
-    headers,
+    headers: storefrontHeaders(),
     body: JSON.stringify({ query, variables }),
     // Revalidate live commerce data hourly; tune per your needs.
     next: { revalidate: 3600 },
@@ -171,7 +171,8 @@ interface ProductByHandleResponse {
 export async function getShopifyProduct(
   handle: string,
 ): Promise<ShopifyProductData | null> {
-  if (!isShopifyConfigured) return null;
+  // Product data works tokenless — only the domain is required.
+  if (!SHOPIFY_STORE_DOMAIN) return null;
 
   try {
     const { product } = await storefrontQuery<ProductByHandleResponse>(

@@ -10,7 +10,7 @@ import { products } from "@/lib/products";
 import type { SubscriptionPlan } from "@/lib/shopify";
 import IngredientGrid from "@/components/IngredientGrid";
 import HoloTicket from "@/components/HoloTicket";
-import { isPreLaunch } from "@/lib/shopify-config";
+import { isPreLaunch, isShopifyConfigured } from "@/lib/shopify-config";
 import { track } from "@/lib/analytics";
 
 interface ProductDetailProps {
@@ -86,9 +86,11 @@ export default function ProductDetail({
 
   const { linesAdd, status, checkoutUrl } = useCart();
 
-  /* `creating`/`updating` mean a Storefront mutation is in flight. */
+  /* `creating`/`updating` mean a Storefront mutation is in flight.
+     Cart mutations need the public token even when product data arrived
+     tokenless, so purchasability also requires the configured storefront. */
   const cartBusy = status === "creating" || status === "updating";
-  const purchasable = Boolean(variantId) && available;
+  const purchasable = Boolean(variantId) && available && isShopifyConfigured;
 
   useEffect(() => {
     track("view_item", {
@@ -502,9 +504,11 @@ export default function ProductDetail({
                   marginTop: "12px",
                 }}
               >
-                {variantId
-                  ? "Currently unavailable."
-                  : "Storefront not connected — set your Shopify env vars to enable checkout."}
+                {!variantId
+                  ? "Storefront not connected — set your Shopify env vars to enable checkout."
+                  : !isShopifyConfigured
+                    ? "Live pricing connected — add the Storefront token to open the cart."
+                    : "Currently unavailable."}
               </p>
             )}
           </motion.div>
