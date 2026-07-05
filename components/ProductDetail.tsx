@@ -7,6 +7,7 @@ import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { useCart } from "@shopify/hydrogen-react";
 import type { Product } from "@/lib/products";
 import { products } from "@/lib/products";
+import type { SubscriptionPlan } from "@/lib/shopify";
 import IngredientGrid from "@/components/IngredientGrid";
 import HoloTicket from "@/components/HoloTicket";
 import { isPreLaunch } from "@/lib/shopify-config";
@@ -20,6 +21,9 @@ interface ProductDetailProps {
   variantId?: string;
   /** Whether the variant is purchasable. Defaults to false when unknown. */
   available?: boolean;
+  /** Subscribe & Save options from Shopify selling plans; the selector
+   *  renders only when at least one exists. */
+  subscriptionPlans?: SubscriptionPlan[];
 }
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -28,9 +32,17 @@ export default function ProductDetail({
   product,
   variantId,
   available = false,
+  subscriptionPlans = [],
 }: ProductDetailProps) {
   const reduce = useReducedMotion();
   const [qty, setQty] = useState(1);
+  // null = one-time purchase; otherwise the selected selling plan GID.
+  const [planId, setPlanId] = useState<string | null>(null);
+  const activePlan = subscriptionPlans.find((p) => p.id === planId) ?? null;
+  const bestPercentOff = subscriptionPlans.reduce(
+    (best, p) => Math.max(best, p.percentOff ?? 0),
+    0,
+  );
 
   // Pre-launch reservation state hooks
   const [pdpEmail, setPdpEmail] = useState("");
@@ -91,13 +103,20 @@ export default function ProductDetail({
    *  add was dispatched (used by Buy Now to then redirect to checkout). */
   function addToCart(): boolean {
     if (!variantId || !purchasable || cartBusy) return false;
-    linesAdd([{ merchandiseId: variantId, quantity: qty }]);
+    linesAdd([
+      {
+        merchandiseId: variantId,
+        quantity: qty,
+        ...(activePlan ? { sellingPlanId: activePlan.id } : {}),
+      },
+    ]);
     track("add_to_cart", {
       item_id: product.slug,
       item_name: product.name,
       quantity: qty,
       price: product.price,
       currency: "USD",
+      subscription: Boolean(activePlan),
     });
     return true;
   }
@@ -348,6 +367,68 @@ export default function ProductDetail({
               </div>
             ) : (
               <>
+                {/* Purchase mode — one-time vs Subscribe & Save. Rendered
+                    only when the Shopify product defines selling plans. */}
+                {subscriptionPlans.length > 0 && (
+                  <div
+                    className="pdp-plan-group"
+                    role="radiogroup"
+                    aria-label="Purchase type"
+                  >
+                    <label className="pdp-plan-row">
+                      <input
+                        type="radio"
+                        name="purchase-mode"
+                        checked={planId === null}
+                        onChange={() => setPlanId(null)}
+                        style={{ accentColor: product.accent }}
+                      />
+                      <span className="mono-cta">One-time</span>
+                      <span className="mono-body pdp-plan-detail">
+                        {product.priceLabel}
+                      </span>
+                    </label>
+                    <label className="pdp-plan-row">
+                      <input
+                        type="radio"
+                        name="purchase-mode"
+                        checked={planId !== null}
+                        onChange={() => setPlanId(subscriptionPlans[0].id)}
+                        style={{ accentColor: product.accent }}
+                      />
+                      <span className="mono-cta">
+                        Subscribe &amp; Save
+                        {bestPercentOff > 0 && (
+                          <span style={{ color: product.accent }}>
+                            {" "}
+                            {bestPercentOff}%
+                          </span>
+                        )}
+                      </span>
+                      {planId !== null && subscriptionPlans.length > 1 ? (
+                        <select
+                          className="mono-body pdp-plan-select"
+                          value={planId}
+                          onChange={(e) => setPlanId(e.target.value)}
+                          aria-label="Delivery frequency"
+                        >
+                          {subscriptionPlans.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="mono-body pdp-plan-detail">
+                          {planId !== null
+                            ? activePlan?.name
+                            : "Skip, pause or cancel anytime"}
+                        </span>
+                      )}
+                    </label>
+                  </div>
+                )}
+
                 {/* Qty selector */}
                 <div className="pdp-qty-row">
                   <span
@@ -862,6 +943,46 @@ export default function ProductDetail({
           align-items: baseline;
           justify-content: space-between;
           margin-bottom: 28px;
+        }
+
+        /* ── Purchase mode (one-time / subscribe) ─────────────────────── */
+        .pdp-plan-group {
+          border: 0.4px solid var(--color-rule);
+          border-radius: var(--radius-canvas);
+          overflow: hidden;
+          margin-bottom: 24px;
+          max-width: 440px;
+        }
+        .pdp-plan-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 14px 16px;
+          cursor: pointer;
+        }
+        .pdp-plan-row + .pdp-plan-row {
+          border-top: 0.4px solid var(--color-rule);
+        }
+        .pdp-plan-row input[type="radio"] {
+          width: 15px;
+          height: 15px;
+          margin: 0;
+          cursor: pointer;
+        }
+        .pdp-plan-detail {
+          margin-left: auto;
+          font-size: 12px;
+          color: var(--color-ink-muted);
+          text-align: right;
+        }
+        .pdp-plan-select {
+          margin-left: auto;
+          background: var(--color-surface);
+          border: 0.4px solid var(--color-rule);
+          color: var(--color-ink);
+          font-size: 12px;
+          padding: 6px 10px;
+          cursor: pointer;
         }
 
         .pdp-qty-row {

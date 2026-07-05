@@ -41,6 +41,16 @@ export interface Money {
   currencyCode: string;
 }
 
+/** A subscription option (Shopify selling plan), normalized for the PDP. */
+export interface SubscriptionPlan {
+  /** Selling plan GID — passed as `sellingPlanId` on the cart line. */
+  id: string;
+  /** Merchant-defined label, e.g. "Every 4 weeks". */
+  name: string;
+  /** Percentage discount vs one-time price, when the plan defines one. */
+  percentOff?: number;
+}
+
 /** Normalized commerce data for a single product, merged into the PDP. */
 export interface ShopifyProductData {
   /** Storefront product GID. */
@@ -50,6 +60,8 @@ export interface ShopifyProductData {
   /** GID of the first variant — the `merchandiseId` for `linesAdd`. */
   variantId: string;
   price: Money;
+  /** Subscribe & Save options; empty when the product has no selling plans. */
+  subscriptionPlans: SubscriptionPlan[];
 }
 
 /**
@@ -101,6 +113,23 @@ const PRODUCT_BY_HANDLE = /* GraphQL */ `
           }
         }
       }
+      sellingPlanGroups(first: 3) {
+        nodes {
+          sellingPlans(first: 6) {
+            nodes {
+              id
+              name
+              priceAdjustments {
+                adjustmentValue {
+                  ... on SellingPlanPercentagePriceAdjustment {
+                    adjustmentPercentage
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
     }
   }
 `;
@@ -115,6 +144,19 @@ interface ProductByHandleResponse {
         id: string;
         availableForSale: boolean;
         price: Money;
+      }>;
+    };
+    sellingPlanGroups: {
+      nodes: Array<{
+        sellingPlans: {
+          nodes: Array<{
+            id: string;
+            name: string;
+            priceAdjustments: Array<{
+              adjustmentValue: { adjustmentPercentage?: number };
+            }>;
+          }>;
+        };
       }>;
     };
   } | null;
@@ -139,12 +181,23 @@ export async function getShopifyProduct(
     const variant = product?.variants.nodes[0];
     if (!product || !variant) return null;
 
+    const subscriptionPlans: SubscriptionPlan[] =
+      product.sellingPlanGroups.nodes.flatMap((group) =>
+        group.sellingPlans.nodes.map((plan) => ({
+          id: plan.id,
+          name: plan.name,
+          percentOff: plan.priceAdjustments[0]?.adjustmentValue
+            ?.adjustmentPercentage,
+        })),
+      );
+
     return {
       id: product.id,
       handle: product.handle,
       available: product.availableForSale && variant.availableForSale,
       variantId: variant.id,
       price: variant.price,
+      subscriptionPlans,
     };
   } catch (err) {
     // Don't take the whole PDP down if Storefront is briefly unreachable —

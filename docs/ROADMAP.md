@@ -23,7 +23,7 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 
 ## 2 — Commerce mechanics (neutralize; mostly Shopify config + surfacing)
 
-- [ ] **Subscriptions** — Shopify Selling Plans on PDPs: one-time vs
+- [x] **Subscriptions** — Shopify Selling Plans on PDPs: one-time vs
       subscribe toggle, % savings, frequency picker (their entire pricing
       psychology is built on Subscribe & Save 20%; biggest structural gap)
 - [x] Bundle — The Curation wired to live commerce ($108 / compare-at $126)

@@ -34,6 +34,7 @@ export default async function ProductPage({ params }: Props) {
       product={product}
       variantId={shopify?.variantId}
       available={shopify?.available ?? false}
+      subscriptionPlans={shopify?.subscriptionPlans ?? []}
     />
   );
 }
