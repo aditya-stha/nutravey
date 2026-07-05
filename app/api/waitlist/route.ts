@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SHOPIFY_STORE_DOMAIN } from "@/lib/shopify-config";
+import { getAdminToken } from "@/lib/shopify-admin";
 import { products } from "@/lib/products";
 import { signPass } from "@/lib/pass";
 import { sendPassEmail } from "@/lib/email";
@@ -64,7 +65,7 @@ async function createShopifyLead(
   item: string,
   flavour: string,
 ): Promise<boolean> {
-  const adminToken = process.env.SHOPIFY_ADMIN_ACCESS_TOKEN;
+  const adminToken = await getAdminToken();
   if (!adminToken || !SHOPIFY_STORE_DOMAIN) {
     // Not configured yet (dev / pre-credentials). Log the lead so it is at
     // least recoverable from logs, and flag loudly in production.
