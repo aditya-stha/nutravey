@@ -96,3 +96,77 @@ export async function adminGraphQL<T>(
   }
   return json.data ?? null;
 }
+
+/* ─── Order request stamping ────────────────────────────────────────────────
+   Makes /account cancel/change requests visible in the Shopify backend:
+   tags the order (cancel-requested / change-requested) and appends the
+   customer's message to the order note. Env-gated like all Admin access. */
+
+interface FindOrderResponse {
+  orders: { nodes: Array<{ id: string; note: string | null }> };
+}
+interface TagsAddResponse {
+  tagsAdd: { userErrors: Array<{ message: string }> };
+}
+interface OrderUpdateResponse {
+  orderUpdate: {
+    order: { id: string } | null;
+    userErrors: Array<{ message: string }>;
+  };
+}
+
+export async function flagOrderRequest(
+  orderName: string,
+  kind: "cancel" | "change",
+  message: string,
+  customerEmail: string,
+): Promise<boolean> {
+  const found = await adminGraphQL<FindOrderResponse>(
+    /* GraphQL */ `
+      query findOrder($q: String!) {
+        orders(first: 1, query: $q) {
+          nodes { id note }
+        }
+      }
+    `,
+    { q: `name:${orderName}` },
+  );
+  const order = found?.orders.nodes[0];
+  if (!order) {
+    log.warn("order_request_unstamped", { orderName, reason: "not found or admin unconfigured" });
+    return false;
+  }
+
+  const stamp = `[${new Date().toISOString().slice(0, 16)}] ${kind.toUpperCase()} REQUEST from ${customerEmail}: ${message || "(no message)"}`;
+  const note = order.note ? `${order.note}\n\n${stamp}` : stamp;
+
+  const [tagged, noted] = await Promise.all([
+    adminGraphQL<TagsAddResponse>(
+      /* GraphQL */ `
+        mutation tag($id: ID!, $tags: [String!]!) {
+          tagsAdd(id: $id, tags: $tags) {
+            userErrors { message }
+          }
+        }
+      `,
+      { id: order.id, tags: [`${kind}-requested`] },
+    ),
+    adminGraphQL<OrderUpdateResponse>(
+      /* GraphQL */ `
+        mutation note($input: OrderInput!) {
+          orderUpdate(input: $input) {
+            order { id }
+            userErrors { message }
+          }
+        }
+      `,
+      { input: { id: order.id, note } },
+    ),
+  ]);
+
+  const ok =
+    (tagged?.tagsAdd.userErrors.length ?? 1) === 0 &&
+    (noted?.orderUpdate.userErrors.length ?? 1) === 0;
+  log[ok ? "info" : "warn"]("order_request_stamped", { orderName, kind, ok });
+  return ok;
+}

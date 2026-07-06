@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCustomer } from "@/lib/customer-account";
+import { flagOrderRequest } from "@/lib/shopify-admin";
 import { log } from "@/lib/log";
 
 /* ─── Order requests (cancel / change) ──────────────────────────────────────
@@ -41,6 +42,10 @@ export async function POST(request: NextRequest) {
   }
 
   log.info("order_request", { order, kind, email: customer.email });
+
+  // Stamp the order in the Shopify backend (tag + note) when Admin API
+  // credentials exist — the request shows on the order page in admin.
+  await flagOrderRequest(order, kind as "cancel" | "change", message, customer.email);
 
   // Deliver to the store inbox when Resend is configured.
   const key = process.env.RESEND_API_KEY;
