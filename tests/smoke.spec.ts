@@ -225,7 +225,7 @@ test("order page verifies signed tokens and rejects forgeries", async ({
 test("account page renders its unconfigured state", async ({ page }) => {
   await page.goto("/account");
   await expect(
-    page.getByText(/Accounts open with the store|Your rituals, on record/),
+    page.getByText(/Accounts open with the store|Your rituals, on record|Sign-in opens once/),
   ).toBeVisible();
 });
 

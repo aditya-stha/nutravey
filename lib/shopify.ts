@@ -74,6 +74,7 @@ export interface ShopifyProductData {
 export async function storefrontQuery<T>(
   query: string,
   variables: Record<string, unknown> = {},
+  opts: { noStore?: boolean } = {},
 ): Promise<T> {
   const url = `https://${SHOPIFY_STORE_DOMAIN}/api/${SHOPIFY_STOREFRONT_API_VERSION}/graphql.json`;
 
@@ -81,8 +82,10 @@ export async function storefrontQuery<T>(
     method: "POST",
     headers: storefrontHeaders(),
     body: JSON.stringify({ query, variables }),
-    // Revalidate live commerce data hourly; tune per your needs.
-    next: { revalidate: 3600 },
+    // Customer-scoped data is never cached; catalog data revalidates hourly.
+    ...(opts.noStore
+      ? { cache: "no-store" as const }
+      : { next: { revalidate: 3600 } }),
   });
 
   if (!res.ok) {

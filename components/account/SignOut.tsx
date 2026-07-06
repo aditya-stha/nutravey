@@ -17,7 +17,7 @@ export default function SignOut() {
         transition: "opacity 200ms ease",
       }}
       onClick={async () => {
-        await fetch("/api/customer/token", { method: "DELETE" });
+        await fetch("/api/customer/session", { method: "DELETE" });
         router.refresh();
       }}
     >

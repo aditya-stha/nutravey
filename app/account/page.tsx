@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
 import {
   customerAccountsEnabled,
-  CUSTOMER_CLIENT_ID,
   getCustomer,
-  getShopId,
 } from "@/lib/customer-account";
 import { isPreLaunch } from "@/lib/shopify-config";
-import SignIn from "@/components/account/SignIn";
+import AuthForms from "@/components/account/AuthForms";
 import SignOut from "@/components/account/SignOut";
 import OrderActions from "@/components/account/OrderActions";
 import Link from "next/link";
@@ -64,7 +62,7 @@ export default async function AccountPage() {
         >
           {isPreLaunch
             ? "Order history and saved details arrive at launch. Until then, your Ritual Pass link is your record — and reservations need no account at all."
-            : "Customer sign-in is one configuration step away (Customer Account API client id). Your orders are safe with Shopify meanwhile — the confirmation email holds your order link and live tracking."}
+            : "Customer sign-in opens once the storefront is connected. Your orders are safe with Shopify meanwhile — the confirmation email holds your order link and live tracking."}
         </p>
         <Link href="/shop" className="mono-cta" style={{ color: "var(--color-ink)" }}>
           {isPreLaunch ? "Reserve your ritual →" : "Back to the collection →"}
@@ -76,7 +74,6 @@ export default async function AccountPage() {
   const customer = await getCustomer();
 
   if (!customer) {
-    const shopId = await getShopId();
     return (
       <Shell>
         <h1 style={h1Style}>Your rituals, on record.</h1>
@@ -90,16 +87,11 @@ export default async function AccountPage() {
             marginBottom: "40px",
           }}
         >
-          Sign in with your email — Shopify sends a one-time code, no password
-          to remember. Your orders and details live here.
+          Orders, delivery status, and requests live here — sign in or create
+          your account. Everything stays on this page; nothing leaves the
+          site.
         </p>
-        {shopId ? (
-          <SignIn clientId={CUSTOMER_CLIENT_ID} shopId={shopId} />
-        ) : (
-          <p className="mono-body" style={{ color: "var(--color-ink-faint)" }}>
-            Sign-in is briefly unavailable — try again in a moment.
-          </p>
-        )}
+        <AuthForms />
       </Shell>
     );
   }

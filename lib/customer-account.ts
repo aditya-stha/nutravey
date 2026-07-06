@@ -1,35 +1,19 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { storefrontQuery } from "@/lib/shopify";
+import { isShopifyConfigured } from "@/lib/shopify-config";
 import { log } from "@/lib/log";
 
-/* ─── Customer Account API (server side) ────────────────────────────────────
-   Shopify's customer login for headless stores: OAuth 2 + PKCE against
-   shopify.com, tokens held in httpOnly cookies, orders queried server-side.
-   Enabled by NEXT_PUBLIC_SHOPIFY_CUSTOMER_CLIENT_ID (Headless channel →
-   Customer Account API); the /account/callback URL must be registered
-   there as a callback URI. */
+/* ─── Customer accounts — classic (fully headless) ──────────────────────────
+   Sign-in, registration, and recovery run through the Storefront API's
+   classic customer mutations, so every screen is ours — no Shopify-hosted
+   login page, no redirects. The access token lives in an httpOnly cookie.
+   Requires the store's customer accounts setting to allow classic/legacy
+   accounts. */
 
-export const CUSTOMER_CLIENT_ID =
-  process.env.NEXT_PUBLIC_SHOPIFY_CUSTOMER_CLIENT_ID ?? "";
-
-export const customerAccountsEnabled = Boolean(CUSTOMER_CLIENT_ID);
+export const customerAccountsEnabled = isShopifyConfigured;
 
 export const TOKEN_COOKIE = "nvy-customer-token";
-
-/** Numeric shop id, needed for the shopify.com auth + API endpoints.
- *  Derived once from the Storefront API (gid://shopify/Shop/<id>). */
-export async function getShopId(): Promise<string | null> {
-  try {
-    const data = await storefrontQuery<{ shop: { id: string } }>(
-      /* GraphQL */ `{ shop { id } }`,
-    );
-    return data.shop.id.split("/").pop() ?? null;
-  } catch (err) {
-    log.error("shop_id_lookup_failed", { message: String(err) });
-    return null;
-  }
-}
 
 export interface CustomerOrder {
   name: string;
@@ -48,111 +32,189 @@ export interface CustomerSummary {
   orders: CustomerOrder[];
 }
 
-/** Loads the signed-in customer via the Customer Account API GraphQL.
- *  Returns null when signed out or the token has expired. */
+interface UserErrors {
+  customerUserErrors: Array<{ code?: string; message: string }>;
+}
+
+function firstError(errs: UserErrors["customerUserErrors"]): string | null {
+  return errs.length ? errs[0].message : null;
+}
+
+/** email+password → access token. Returns the token or a user-facing error. */
+export async function signIn(
+  email: string,
+  password: string,
+): Promise<{ token?: string; expiresAt?: string; error?: string }> {
+  try {
+    const data = await storefrontQuery<{
+      customerAccessTokenCreate: UserErrors & {
+        customerAccessToken: { accessToken: string; expiresAt: string } | null;
+      };
+    }>(
+      /* GraphQL */ `
+        mutation signIn($input: CustomerAccessTokenCreateInput!) {
+          customerAccessTokenCreate(input: $input) {
+            customerAccessToken { accessToken expiresAt }
+            customerUserErrors { code message }
+          }
+        }
+      `,
+      { input: { email, password } },
+      { noStore: true },
+    );
+    const result = data.customerAccessTokenCreate;
+    if (!result.customerAccessToken) {
+      return {
+        error:
+          firstError(result.customerUserErrors) ??
+          "Email or password didn't match.",
+      };
+    }
+    return {
+      token: result.customerAccessToken.accessToken,
+      expiresAt: result.customerAccessToken.expiresAt,
+    };
+  } catch (err) {
+    log.error("customer_signin_failed", { message: String(err) });
+    return { error: "Sign-in is briefly unavailable — try again." };
+  }
+}
+
+/** Creates the account, then signs straight in. */
+export async function signUp(
+  firstName: string,
+  email: string,
+  password: string,
+): Promise<{ token?: string; expiresAt?: string; error?: string }> {
+  try {
+    const data = await storefrontQuery<{
+      customerCreate: UserErrors & { customer: { id: string } | null };
+    }>(
+      /* GraphQL */ `
+        mutation signUp($input: CustomerCreateInput!) {
+          customerCreate(input: $input) {
+            customer { id }
+            customerUserErrors { code message }
+          }
+        }
+      `,
+      { input: { firstName, email, password } },
+      { noStore: true },
+    );
+    if (!data.customerCreate.customer) {
+      return {
+        error:
+          firstError(data.customerCreate.customerUserErrors) ??
+          "Couldn't create the account.",
+      };
+    }
+    return signIn(email, password);
+  } catch (err) {
+    log.error("customer_signup_failed", { message: String(err) });
+    return { error: "Registration is briefly unavailable — try again." };
+  }
+}
+
+/** Sends Shopify's password-recovery email. Always claims success to the
+ *  caller (no account-existence oracle for probing bots). */
+export async function recover(email: string): Promise<void> {
+  try {
+    await storefrontQuery(
+      /* GraphQL */ `
+        mutation recover($email: String!) {
+          customerRecover(email: $email) {
+            customerUserErrors { code message }
+          }
+        }
+      `,
+      { email },
+      { noStore: true },
+    );
+  } catch (err) {
+    log.warn("customer_recover_failed", { message: String(err) });
+  }
+}
+
+const CUSTOMER_QUERY = /* GraphQL */ `
+  query Customer($token: String!) {
+    customer(customerAccessToken: $token) {
+      firstName
+      email
+      orders(first: 10, sortKey: PROCESSED_AT, reverse: true) {
+        nodes {
+          name
+          processedAt
+          financialStatus
+          fulfillmentStatus
+          totalPrice { amount currencyCode }
+          lineItems(first: 10) {
+            nodes {
+              title
+              variant { title }
+            }
+          }
+          successfulFulfillments(first: 3) {
+            trackingCompany
+            trackingInfo(first: 3) { number url }
+          }
+        }
+      }
+    }
+  }
+`;
+
+interface CustomerResponse {
+  customer: {
+    firstName: string | null;
+    email: string | null;
+    orders: {
+      nodes: Array<{
+        name: string;
+        processedAt: string;
+        financialStatus?: string;
+        fulfillmentStatus?: string;
+        totalPrice: { amount: string; currencyCode: string };
+        lineItems: {
+          nodes: Array<{ title: string; variant: { title: string } | null }>;
+        };
+        successfulFulfillments?: Array<{
+          trackingCompany?: string;
+          trackingInfo?: Array<{ number?: string; url?: string }>;
+        }>;
+      }>;
+    };
+  } | null;
+}
+
+/** The signed-in customer (orders included), or null when signed out /
+ *  token expired. */
 export async function getCustomer(): Promise<CustomerSummary | null> {
   const token = (await cookies()).get(TOKEN_COOKIE)?.value;
   if (!token || !customerAccountsEnabled) return null;
 
-  const shopId = await getShopId();
-  if (!shopId) return null;
-
   try {
-    const res = await fetch(
-      `https://shopify.com/${shopId}/account/customer/api/2026-04/graphql`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: token,
-        },
-        body: JSON.stringify({
-          query: /* GraphQL */ `
-            {
-              customer {
-                firstName
-                emailAddress { emailAddress }
-                orders(first: 10, sortKey: PROCESSED_AT, reverse: true) {
-                  nodes {
-                    name
-                    processedAt
-                    financialStatus
-                    totalPrice { amount currencyCode }
-                    lineItems(first: 10) {
-                      nodes { title variantTitle }
-                    }
-                    fulfillments(first: 3) {
-                      nodes {
-                        status
-                        trackingInformation { number url }
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          `,
-        }),
-        cache: "no-store",
-      },
+    const data = await storefrontQuery<CustomerResponse>(
+      CUSTOMER_QUERY,
+      { token },
+      { noStore: true },
     );
-    if (!res.ok) {
-      log.warn("customer_query_failed", { status: res.status });
-      return null;
-    }
-    const json = (await res.json()) as {
-      data?: {
-        customer: {
-          firstName: string | null;
-          emailAddress: { emailAddress: string } | null;
-          orders: {
-            nodes: Array<{
-              name: string;
-              processedAt: string;
-              financialStatus?: string;
-              totalPrice: { amount: string; currencyCode: string };
-              lineItems?: {
-                nodes: Array<{ title?: string; variantTitle?: string }>;
-              };
-              fulfillments?: {
-                nodes: Array<{
-                  status?: string;
-                  trackingInformation?: Array<{ number?: string; url?: string }> | { number?: string; url?: string };
-                }>;
-              };
-            }>;
-          };
-        };
-      };
-      errors?: unknown;
-    };
-    const customer = json.data?.customer;
-    if (!customer) {
-      if (json.errors) {
-        log.warn("customer_query_errors", {
-          errors: JSON.stringify(json.errors).slice(0, 300),
-        });
-      }
-      return null;
-    }
+    const customer = data.customer;
+    if (!customer) return null;
+
     return {
       firstName: customer.firstName ?? "there",
-      email: customer.emailAddress?.emailAddress ?? "",
+      email: customer.email ?? "",
       orders: customer.orders.nodes.map((o) => {
-        const fulfillment = o.fulfillments?.nodes?.[0];
-        const trackingRaw = fulfillment?.trackingInformation;
-        const tracking = Array.isArray(trackingRaw)
-          ? trackingRaw[0]
-          : trackingRaw;
+        const tracking = o.successfulFulfillments?.[0]?.trackingInfo?.[0];
         return {
           name: o.name,
           processedAt: o.processedAt,
           financialStatus: o.financialStatus,
-          fulfillmentStatus: fulfillment?.status,
+          fulfillmentStatus: o.fulfillmentStatus,
           total: o.totalPrice.amount,
           currency: o.totalPrice.currencyCode,
-          items: (o.lineItems?.nodes ?? [])
-            .map((li) => li.variantTitle || li.title || "")
+          items: o.lineItems.nodes
+            .map((li) => li.variant?.title || li.title)
             .filter(Boolean),
           tracking:
             tracking?.url || tracking?.number
