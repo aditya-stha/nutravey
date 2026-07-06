@@ -9,7 +9,7 @@ import { log } from "@/lib/log";
 
 /* ─── Reviews ───────────────────────────────────────────────────────────────
    Two sources, one display:
-   1. Shopify metaobjects (type `customer_review`) — created by the API for
+   1. Shopify metaobjects ($app:review definition, admin-editable) — created by the API for
       verified buyers, or by the marketing team in admin → Content →
       Metaobjects. Definition fields: product, rating, title, body, author,
       date, verified.
@@ -30,7 +30,7 @@ export interface Review {
   verified: boolean;
 }
 
-const METAOBJECT_TYPE = "customer_review";
+const METAOBJECT_TYPE = "app--393416998913--review"; // $app:review, resolved
 
 const REVIEWS_QUERY = /* GraphQL */ `
   query Reviews {

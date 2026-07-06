@@ -170,3 +170,86 @@ export async function flagOrderRequest(
   log[ok ? "info" : "warn"]("order_request_stamped", { orderName, kind, ok });
   return ok;
 }
+
+/* ─── Customer create-or-tag (GraphQL — new apps have no REST access) ──────
+   Creates the customer; if the email already exists, finds them and adds
+   the new tags instead, so every reservation's slot-<id> tag lands. */
+
+interface CustomerCreateResponse {
+  customerCreate: {
+    customer: { id: string } | null;
+    userErrors: Array<{ field?: string[]; message: string }>;
+  };
+}
+interface CustomerByEmailResponse {
+  customers: { nodes: Array<{ id: string }> };
+}
+
+export async function createOrTagCustomer({
+  firstName,
+  email,
+  tags,
+  note,
+}: {
+  firstName: string;
+  email: string;
+  tags: string[];
+  note: string;
+}): Promise<boolean> {
+  const created = await adminGraphQL<CustomerCreateResponse>(
+    /* GraphQL */ `
+      mutation customerCreate($input: CustomerInput!) {
+        customerCreate(input: $input) {
+          customer { id }
+          userErrors { field message }
+        }
+      }
+    `,
+    {
+      input: {
+        firstName,
+        email,
+        tags,
+        note,
+        emailMarketingConsent: {
+          marketingState: "SUBSCRIBED",
+          marketingOptInLevel: "SINGLE_OPT_IN",
+        },
+      },
+    },
+  );
+  if (!created) return false;
+  if (created.customerCreate.customer) return true;
+
+  const errors = created.customerCreate.userErrors;
+  const taken = errors.some((e) => /taken|exists/i.test(e.message));
+  if (!taken) {
+    log.error("customer_create_failed", {
+      email,
+      errors: errors.map((e) => e.message),
+    });
+    return false;
+  }
+
+  // Existing customer — attach the new slot/selection tags.
+  const found = await adminGraphQL<CustomerByEmailResponse>(
+    /* GraphQL */ `
+      query customerByEmail($q: String!) {
+        customers(first: 1, query: $q) { nodes { id } }
+      }
+    `,
+    { q: `email:${email}` },
+  );
+  const id = found?.customers.nodes[0]?.id;
+  if (!id) return false;
+
+  const tagged = await adminGraphQL<{ tagsAdd: { userErrors: Array<{ message: string }> } }>(
+    /* GraphQL */ `
+      mutation tag($id: ID!, $tags: [String!]!) {
+        tagsAdd(id: $id, tags: $tags) { userErrors { message } }
+      }
+    `,
+    { id, tags },
+  );
+  return (tagged?.tagsAdd.userErrors.length ?? 1) === 0;
+}

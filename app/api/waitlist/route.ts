@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SHOPIFY_STORE_DOMAIN } from "@/lib/shopify-config";
-import { getAdminToken } from "@/lib/shopify-admin";
+import { getAdminToken, createOrTagCustomer } from "@/lib/shopify-admin";
 import { products } from "@/lib/products";
 import { signPass } from "@/lib/pass";
 import { createDiscountCode, FRIEND_PCT } from "@/lib/referral";
@@ -75,42 +75,21 @@ async function createShopifyLead(
     return true;
   }
 
-  const tags = [
-    "pre-launch",
-    "interested",
-    `flavour-${flavour.toLowerCase().replace(/\s+/g, "-")}`,
-    `selection-${item}`,
-    // Links this customer to their slot/referral code for webhook rewards.
-    `slot-${slotId}`,
-  ].join(", ");
-
-  const res = await fetch(
-    `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/customers.json`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": adminToken,
-      },
-      body: JSON.stringify({
-        customer: {
-          first_name: name,
-          email,
-          tags,
-          note: `Pre-launch reservation: ${flavour} (${item})`,
-          email_marketing_consent: {
-            state: "subscribed",
-            opt_in_level: "single_opt_in",
-          },
-        },
-      }),
-    },
-  );
-
-  if (res.ok) return true;
-  if (res.status === 422) return true; // already on the list — idempotent
-  log.error("waitlist_shopify_error", { status: res.status, email, item });
-  return false;
+  const ok = await createOrTagCustomer({
+    firstName: name,
+    email,
+    tags: [
+      "pre-launch",
+      "interested",
+      `flavour-${flavour.toLowerCase().replace(/\s+/g, "-")}`,
+      `selection-${item}`,
+      // Links this customer to their slot/referral code for webhook rewards.
+      `slot-${slotId}`,
+    ],
+    note: `Pre-launch reservation: ${flavour} (${item})`,
+  });
+  if (!ok) log.error("waitlist_shopify_error", { email, item });
+  return ok;
 }
 
 export async function POST(request: NextRequest) {
