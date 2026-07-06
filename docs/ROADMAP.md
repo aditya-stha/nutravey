@@ -30,8 +30,8 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 - [ ] Build-your-own bundle picker (post-launch)
 - [ ] Launch offer = reservation list: honor the 15% VIP promise as the
       starter-pack equivalent of their 40%-off pack
-- [ ] Referral loop: "give a friend priority access" on the pass page —
-      the pass link is already a shareable artifact
+- [x] Referral loop: slot ID = referral code (5% friend / 5% reward via
+      webhook + Admin API), /r/<code> share links, cart auto-apply
 - [ ] Gift-with-purchase threshold mechanic (their "2+ boxes → free bottle")
       — decide the Nutravey equivalent (you)
 
@@ -56,8 +56,8 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 - [x] Signed pass system (no-database capability URLs) + launch countdown
 - [x] Security headers, branded error surfaces, structured server logging,
       CI with money-path smoke tests
-- [ ] Owned post-purchase experience: order-confirmed page/email that carries
-      the brand past Shopify checkout (theirs is stock Shopify)
+- [x] Owned post-purchase: webhook-driven branded confirmation email +
+      signed /order status page
 
 ## Launch blockers (accounts/credentials — all you)
 
@@ -87,3 +87,7 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
       pre-launch list, remove Shopify store password
 - [ ] Real batch/COA data: replace pilot placeholders in lib/batches.ts,
       drop COA PDFs in /public/coa/, print QR (/ritual/<lot>) on packaging
+
+- [x] Customer accounts (Customer Account API, env-gated): PKCE sign-in,
+      /account order history — register /account/callback as callback URI
+      and set NEXT_PUBLIC_SHOPIFY_CUSTOMER_CLIENT_ID to activate
