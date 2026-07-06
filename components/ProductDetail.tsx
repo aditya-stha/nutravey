@@ -10,6 +10,8 @@ import type { Product } from "@/lib/products";
 import { products } from "@/lib/products";
 import type { SubscriptionPlan } from "@/lib/shopify";
 import IngredientGrid from "@/components/IngredientGrid";
+import Reviews from "@/components/Reviews";
+import type { Review } from "@/lib/reviews";
 import HoloTicket from "@/components/HoloTicket";
 import { isPreLaunch, isShopifyConfigured } from "@/lib/shopify-config";
 import { track } from "@/lib/analytics";
@@ -25,6 +27,8 @@ interface ProductDetailProps {
   /** Subscribe & Save options from Shopify selling plans; the selector
    *  renders only when at least one exists. */
   subscriptionPlans?: SubscriptionPlan[];
+  /** Published reviews (metaobjects + marketing seed), server-fetched. */
+  reviews?: Review[];
 }
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -34,6 +38,7 @@ export default function ProductDetail({
   variantId,
   available = false,
   subscriptionPlans = [],
+  reviews = [],
 }: ProductDetailProps) {
   const reduce = useReducedMotion();
   const [qty, setQty] = useState(1);
@@ -854,6 +859,9 @@ export default function ProductDetail({
         </div>
         <hr />
       </section>
+
+      {/* ── Reviews — verified buyers + marketing seed ────────────────── */}
+      <Reviews slug={product.slug} accent={product.accent} reviews={reviews} />
 
       {/* ── Cross-sell: also explore ─────────────────────────────────── */}
       <section style={{ backgroundColor: "var(--color-surface)" }}>

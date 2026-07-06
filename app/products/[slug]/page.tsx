@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import ProductDetail from "@/components/ProductDetail";
 import { products, getProduct, type ProductSlug } from "@/lib/products";
 import { getShopifyProduct } from "@/lib/shopify";
+import { getReviews } from "@/lib/reviews";
 
 /* All flavour PDPs share this route; `lib/products.ts` is the roster.
    `dynamicParams = false` 404s any slug not returned below, so `getProduct`
@@ -28,13 +29,17 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const product = getProduct((await params).slug);
   // Local slug maps 1:1 to the Shopify product handle.
-  const shopify = await getShopifyProduct(product.slug);
+  const [shopify, reviews] = await Promise.all([
+    getShopifyProduct(product.slug),
+    getReviews(product.slug),
+  ]);
   return (
     <ProductDetail
       product={product}
       variantId={shopify?.variantId}
       available={shopify?.available ?? false}
       subscriptionPlans={shopify?.subscriptionPlans ?? []}
+      reviews={reviews}
     />
   );
 }

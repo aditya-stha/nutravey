@@ -35,8 +35,11 @@ export interface CustomerOrder {
   name: string;
   processedAt: string;
   financialStatus?: string;
+  fulfillmentStatus?: string;
   total: string;
   currency: string;
+  items: string[];
+  tracking?: { number?: string; url?: string };
 }
 
 export interface CustomerSummary {
@@ -75,6 +78,15 @@ export async function getCustomer(): Promise<CustomerSummary | null> {
                     processedAt
                     financialStatus
                     totalPrice { amount currencyCode }
+                    lineItems(first: 10) {
+                      nodes { title variantTitle }
+                    }
+                    fulfillments(first: 3) {
+                      nodes {
+                        status
+                        trackingInformation { number url }
+                      }
+                    }
                   }
                 }
               }
@@ -99,6 +111,15 @@ export async function getCustomer(): Promise<CustomerSummary | null> {
               processedAt: string;
               financialStatus?: string;
               totalPrice: { amount: string; currencyCode: string };
+              lineItems?: {
+                nodes: Array<{ title?: string; variantTitle?: string }>;
+              };
+              fulfillments?: {
+                nodes: Array<{
+                  status?: string;
+                  trackingInformation?: Array<{ number?: string; url?: string }> | { number?: string; url?: string };
+                }>;
+              };
             }>;
           };
         };
@@ -117,13 +138,28 @@ export async function getCustomer(): Promise<CustomerSummary | null> {
     return {
       firstName: customer.firstName ?? "there",
       email: customer.emailAddress?.emailAddress ?? "",
-      orders: customer.orders.nodes.map((o) => ({
-        name: o.name,
-        processedAt: o.processedAt,
-        financialStatus: o.financialStatus,
-        total: o.totalPrice.amount,
-        currency: o.totalPrice.currencyCode,
-      })),
+      orders: customer.orders.nodes.map((o) => {
+        const fulfillment = o.fulfillments?.nodes?.[0];
+        const trackingRaw = fulfillment?.trackingInformation;
+        const tracking = Array.isArray(trackingRaw)
+          ? trackingRaw[0]
+          : trackingRaw;
+        return {
+          name: o.name,
+          processedAt: o.processedAt,
+          financialStatus: o.financialStatus,
+          fulfillmentStatus: fulfillment?.status,
+          total: o.totalPrice.amount,
+          currency: o.totalPrice.currencyCode,
+          items: (o.lineItems?.nodes ?? [])
+            .map((li) => li.variantTitle || li.title || "")
+            .filter(Boolean),
+          tracking:
+            tracking?.url || tracking?.number
+              ? { number: tracking.number, url: tracking.url }
+              : undefined,
+        };
+      }),
     };
   } catch (err) {
     log.error("customer_query_failed", { message: String(err) });

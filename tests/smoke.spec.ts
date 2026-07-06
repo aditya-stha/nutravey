@@ -228,3 +228,25 @@ test("account page renders its unconfigured state", async ({ page }) => {
     page.getByText(/Accounts open with the store|Your rituals, on record/),
   ).toBeVisible();
 });
+
+test("PDP renders the reviews section", async ({ page }) => {
+  await page.goto("/products/strawberry-surge");
+  await expect(page.getByText("From the people living it.")).toBeVisible();
+  await expect(page.getByText(/No reviews yet|Verified buyer/)).toBeVisible();
+});
+
+test("review submission requires a verified customer session", async ({
+  request,
+}) => {
+  const res = await request.post("/api/reviews", {
+    data: { product: "strawberry-surge", rating: 5, body: "bot attempt" },
+  });
+  expect(res.status()).toBe(403);
+});
+
+test("order requests require a customer session", async ({ request }) => {
+  const res = await request.post("/api/order-request", {
+    data: { order: "#1001", kind: "cancel", message: "" },
+  });
+  expect(res.status()).toBe(401);
+});

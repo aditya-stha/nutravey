@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   customerAccountsEnabled,
   CUSTOMER_CLIENT_ID,
@@ -8,6 +7,8 @@ import {
 } from "@/lib/customer-account";
 import SignIn from "@/components/account/SignIn";
 import SignOut from "@/components/account/SignOut";
+import OrderActions from "@/components/account/OrderActions";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Account — Nutravey",
@@ -131,38 +132,101 @@ export default async function AccountPage() {
             listStyle: "none",
             margin: "0 0 40px",
             padding: 0,
-            maxWidth: "640px",
+            maxWidth: "720px",
             borderTop: "0.4px solid var(--color-rule)",
           }}
         >
-          {customer.orders.map((o) => (
-            <li
-              key={o.name}
-              style={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "baseline",
-                gap: "24px",
-                padding: "16px 0",
-                borderBottom: "0.4px solid var(--color-rule)",
-              }}
-            >
-              <span className="mono-cta" style={{ color: "var(--color-ink)" }}>
-                {o.name}
-              </span>
-              <span
-                className="mono-body"
-                style={{ fontSize: "12px", color: "var(--color-ink-faint)" }}
+          {customer.orders.map((o) => {
+            const status = (o.fulfillmentStatus ?? "").toUpperCase();
+            const shipped = ["SUCCESS", "FULFILLED", "DELIVERED"].some((s) =>
+              status.includes(s),
+            );
+            return (
+              <li
+                key={o.name}
+                style={{
+                  padding: "20px 0",
+                  borderBottom: "0.4px solid var(--color-rule)",
+                }}
               >
-                {o.processedAt.slice(0, 10)}
-              </span>
-              <span className="mono-body" style={{ fontSize: "13px", color: "var(--color-ink)" }}>
-                {o.total} {o.currency}
-              </span>
-            </li>
-          ))}
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "baseline",
+                    gap: "24px",
+                    flexWrap: "wrap",
+                    marginBottom: "6px",
+                  }}
+                >
+                  <span className="mono-cta" style={{ color: "var(--color-ink)" }}>
+                    {o.name}
+                  </span>
+                  <span
+                    className="mono-label"
+                    style={{
+                      fontSize: "10px",
+                      color: shipped ? "var(--color-ink)" : "var(--color-ink-faint)",
+                      border: "0.4px solid var(--color-rule)",
+                      borderRadius: "var(--radius-chip)",
+                      padding: "3px 10px",
+                    }}
+                  >
+                    {shipped ? "Out for delivery" : "Preparing"}
+                  </span>
+                  <span
+                    className="mono-body"
+                    style={{ fontSize: "12px", color: "var(--color-ink-faint)" }}
+                  >
+                    {o.processedAt.slice(0, 10)}
+                  </span>
+                  <span className="mono-body" style={{ fontSize: "13px", color: "var(--color-ink)" }}>
+                    {o.total} {o.currency}
+                  </span>
+                </div>
+
+                {o.items.length > 0 && (
+                  <p
+                    className="mono-body"
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--color-ink-muted)",
+                      marginBottom: "10px",
+                    }}
+                  >
+                    {o.items.join(" · ")}
+                  </p>
+                )}
+
+                {o.tracking?.url && (
+                  <p style={{ marginBottom: "10px" }}>
+                    <a
+                      href={o.tracking.url}
+                      className="mono-cta"
+                      style={{ fontSize: "11px", color: "var(--color-ink)", textDecoration: "underline" }}
+                    >
+                      Track shipment{o.tracking.number ? ` · ${o.tracking.number}` : ""} →
+                    </a>
+                  </p>
+                )}
+
+                <OrderActions order={o.name} />
+              </li>
+            );
+          })}
         </ul>
       )}
+
+      <p style={{ marginBottom: "32px" }}>
+        <Link
+          href="/cart"
+          className="mono-cta"
+          style={{ color: "var(--color-ink)" }}
+        >
+          Your current cart →
+        </Link>
+      </p>
+
       <SignOut />
     </Shell>
   );

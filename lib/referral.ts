@@ -1,6 +1,5 @@
 import "server-only";
-import { getAdminToken } from "@/lib/shopify-admin";
-import { SHOPIFY_STORE_DOMAIN } from "@/lib/shopify-config";
+import { adminGraphQL } from "@/lib/shopify-admin";
 import { log } from "@/lib/log";
 
 /* ─── Referral program ──────────────────────────────────────────────────────
@@ -16,35 +15,6 @@ export const REWARD_PCT = 5;
 
 /** Slot IDs / referral codes look like NVY-ST-12345. */
 export const REFERRAL_CODE_RE = /^NVY-[A-Z]{2}-\d{5}$/;
-
-async function adminGraphQL<T>(
-  query: string,
-  variables: Record<string, unknown>,
-): Promise<T | null> {
-  const token = await getAdminToken();
-  if (!token || !SHOPIFY_STORE_DOMAIN) return null;
-  const res = await fetch(
-    `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "X-Shopify-Access-Token": token,
-      },
-      body: JSON.stringify({ query, variables }),
-    },
-  );
-  if (!res.ok) {
-    log.error("admin_graphql_failed", { status: res.status });
-    return null;
-  }
-  const json = (await res.json()) as { data?: T; errors?: unknown };
-  if (json.errors) {
-    log.error("admin_graphql_errors", { errors: JSON.stringify(json.errors).slice(0, 300) });
-    return null;
-  }
-  return json.data ?? null;
-}
 
 const CREATE_DISCOUNT = /* GraphQL */ `
   mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {

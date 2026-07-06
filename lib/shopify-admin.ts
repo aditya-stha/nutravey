@@ -64,3 +64,35 @@ export async function getAdminToken(): Promise<string | null> {
     return null;
   }
 }
+
+/** Admin API GraphQL call. Null when unconfigured or on errors (logged). */
+export async function adminGraphQL<T>(
+  query: string,
+  variables: Record<string, unknown> = {},
+): Promise<T | null> {
+  const token = await getAdminToken();
+  if (!token || !SHOPIFY_STORE_DOMAIN) return null;
+  const res = await fetch(
+    `https://${SHOPIFY_STORE_DOMAIN}/admin/api/2026-04/graphql.json`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Shopify-Access-Token": token,
+      },
+      body: JSON.stringify({ query, variables }),
+    },
+  );
+  if (!res.ok) {
+    log.error("admin_graphql_failed", { status: res.status });
+    return null;
+  }
+  const json = (await res.json()) as { data?: T; errors?: unknown };
+  if (json.errors) {
+    log.error("admin_graphql_errors", {
+      errors: JSON.stringify(json.errors).slice(0, 300),
+    });
+    return null;
+  }
+  return json.data ?? null;
+}
