@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useReducedMotion } from "framer-motion";
+import Logo from "@/components/Logo";
 
 /* ─── Ritual Pass — the reservation artifact ────────────────────────────────
    One card, rendered identically wherever a reservation exists: the shop
@@ -101,7 +102,10 @@ export default function HoloTicket({
           <p className="mono-label text-[8px] text-white/50 tracking-[0.2em] mb-1">
             RITUAL PASS
           </p>
-          <p className="font-semibold text-lg tracking-tight">NUTRAVEY</p>
+          <Logo
+            aria-label="Nutravey"
+            style={{ height: "16px", color: "var(--color-cream)" }}
+          />
         </div>
         {/* Holo-foil badge: conic border rotates with tilt */}
         <span
