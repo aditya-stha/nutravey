@@ -5,6 +5,75 @@ import Link from "next/link";
 import HoloTicket from "@/components/HoloTicket";
 import { products, curation } from "@/lib/products";
 
+function ReferralShare({ code, accent }: { code: string; accent: string }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    try {
+      await navigator.clipboard.writeText(
+        `${location.origin}/r/${code}`,
+      );
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2400);
+    } catch {
+      // Clipboard unavailable — the visible code still works manually.
+    }
+  };
+
+  return (
+    <div style={{ marginTop: "72px", maxWidth: "440px" }}>
+      <p
+        className="mono-label"
+        style={{ color: "var(--color-ink)", opacity: 0.5, marginBottom: "14px" }}
+      >
+        Refer a Friend
+      </p>
+      <p
+        className="mono-body"
+        style={{
+          fontSize: "13px",
+          lineHeight: 1.7,
+          color: "var(--color-ink-muted)",
+          marginBottom: "20px",
+        }}
+      >
+        Your slot ID is also your referral code. Friends who order with it
+        save 5% — and every friend who does earns you a 5% code of your own.
+      </p>
+      <div
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "16px",
+          border: "0.4px solid var(--color-rule)",
+          borderRadius: "var(--radius-canvas)",
+          padding: "12px 18px",
+        }}
+      >
+        <span
+          className="mono-cta"
+          style={{ letterSpacing: "0.14em", color: "var(--color-ink)" }}
+        >
+          {code}
+        </span>
+        <button
+          type="button"
+          onClick={share}
+          className="mono-cta"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            color: accent,
+            padding: 0,
+          }}
+        >
+          {copied ? "Link copied" : "Copy share link"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Private pass view ─────────────────────────────────────────────────────
    A verified Ritual Pass, presented like the artifact it is: a single
    centered column — greeting, holo ticket, launch countdown. (Centered by
@@ -170,6 +239,8 @@ export default function PassView({ pass }: { pass: Pass }) {
         LAUNCH IN
       </p>
       <Countdown accent={accent} />
+
+      <ReferralShare code={pass.id} accent={accent} />
 
       <p
         className="mono-body"

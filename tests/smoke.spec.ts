@@ -92,7 +92,7 @@ test("waitlist API accepts a reservation and issues a working pass link", async 
   // The signed link renders the private pass with ticket + countdown.
   await page.goto(json.passUrl);
   await expect(page.getByText("RITUAL PASS · VERIFIED")).toBeVisible();
-  await expect(page.getByText(json.id)).toBeVisible();
+  await expect(page.getByText(json.id).first()).toBeVisible();
   await expect(page.getByText("LAUNCH IN")).toBeVisible();
 });
 
@@ -178,5 +178,53 @@ test("unknown routes get the branded 404", async ({ page }) => {
   await expect(page.getByText("Nothing formulated here.")).toBeVisible();
   await expect(
     page.getByRole("link", { name: /The Collection/ }),
+  ).toBeVisible();
+});
+
+test("referral link sets the cookie and forwards to the shop", async ({
+  request,
+}) => {
+  const res = await request.get("/r/NVY-ST-12345", {
+    maxRedirects: 0,
+  });
+  expect(res.status()).toBe(307);
+  expect(res.headers()["location"]).toContain("/shop");
+  expect(res.headers()["set-cookie"]).toContain("nvy-ref=NVY-ST-12345");
+});
+
+test("order page verifies signed tokens and rejects forgeries", async ({
+  page,
+}) => {
+  // Signed with the dev fallback secret the test server also uses.
+  const { createHmac: hmac } = await import("node:crypto");
+  const payload = Buffer.from(
+    JSON.stringify({
+      num: "#1001",
+      name: "Smoke",
+      email: "smoke@example.com",
+      total: "42.00",
+      currency: "USD",
+      items: ["Electrolytes Powder Mix"],
+      statusUrl: "https://nutravey.myshopify.com/orders/abc",
+      ts: Date.now(),
+    }),
+  );
+  const sig = hmac("sha256", "nutravey-dev-pass-secret")
+    .update(payload)
+    .digest();
+  const token = `${payload.toString("base64url")}.${sig.toString("base64url")}`;
+
+  await page.goto(`/order?t=${token}`);
+  await expect(page.getByText("#1001 · Confirmed")).toBeVisible();
+  await expect(page.getByText("Electrolytes Powder Mix")).toBeVisible();
+
+  await page.goto("/order?t=forged.token");
+  await expect(page.getByText("This order link isn't valid.")).toBeVisible();
+});
+
+test("account page renders its unconfigured state", async ({ page }) => {
+  await page.goto("/account");
+  await expect(
+    page.getByText(/Accounts open with the store|Your rituals, on record/),
   ).toBeVisible();
 });

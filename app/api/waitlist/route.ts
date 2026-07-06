@@ -3,6 +3,7 @@ import { SHOPIFY_STORE_DOMAIN } from "@/lib/shopify-config";
 import { getAdminToken } from "@/lib/shopify-admin";
 import { products } from "@/lib/products";
 import { signPass } from "@/lib/pass";
+import { createDiscountCode, FRIEND_PCT } from "@/lib/referral";
 import { sendPassEmail } from "@/lib/email";
 import { log } from "@/lib/log";
 
@@ -64,6 +65,7 @@ async function createShopifyLead(
   email: string,
   item: string,
   flavour: string,
+  slotId: string,
 ): Promise<boolean> {
   const adminToken = await getAdminToken();
   if (!adminToken || !SHOPIFY_STORE_DOMAIN) {
@@ -78,6 +80,8 @@ async function createShopifyLead(
     "interested",
     `flavour-${flavour.toLowerCase().replace(/\s+/g, "-")}`,
     `selection-${item}`,
+    // Links this customer to their slot/referral code for webhook rewards.
+    `slot-${slotId}`,
   ].join(", ");
 
   const res = await fetch(
@@ -167,7 +171,11 @@ export async function POST(request: NextRequest) {
       ? "The Curation Box"
       : (products.find((p) => p.id === item)?.name ?? "Ritual Set");
 
-  const persisted = await createShopifyLead(name, email, item, flavor);
+  const id = `NVY-${item.slice(0, 2).toUpperCase()}-${Math.floor(
+    10000 + Math.random() * 90000,
+  )}`;
+
+  const persisted = await createShopifyLead(name, email, item, flavor, id);
   if (!persisted) {
     return NextResponse.json(
       { ok: false, error: "We couldn't save your reservation. Try again." },
@@ -175,9 +183,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const id = `NVY-${item.slice(0, 2).toUpperCase()}-${Math.floor(
-    10000 + Math.random() * 90000,
-  )}`;
+  // The slot ID doubles as a shareable referral code (friends save FRIEND_PCT%).
+  // Env-gated inside; failure is non-fatal — the reservation stands.
+  await createDiscountCode({
+    code: id,
+    title: `Referral — ${id}`,
+    percent: FRIEND_PCT,
+  });
 
   // Private capability URL: the signed payload *is* the record.
   const passToken = signPass({ id, name, email, item, flavor, ts: Date.now() });

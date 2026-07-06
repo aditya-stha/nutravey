@@ -7,6 +7,7 @@
    <CartProvider> (mounted in the root layout). */
 
 import Link from "next/link";
+import { useEffect, useRef } from "react";
 import { useCart, Money, Image } from "@shopify/hydrogen-react";
 import type {
   CartLine,
@@ -19,8 +20,36 @@ import { track } from "@/lib/analytics";
 type Line = CartLine | ComponentizableCartLine;
 
 export default function CartPage() {
-  const { lines, cost, checkoutUrl, totalQuantity, status, linesRemove } =
-    useCart();
+  const {
+    lines,
+    cost,
+    checkoutUrl,
+    totalQuantity,
+    status,
+    linesRemove,
+    linesUpdate,
+    discountCodes,
+    discountCodesUpdate,
+  } = useCart();
+
+  /* Referral auto-apply: /r/<code> stores the code in a cookie; once the
+     cart exists, apply it exactly once. Shopify validates the code — an
+     invalid one simply comes back inapplicable. */
+  const refApplied = useRef(false);
+  const hasLines = (lines ?? []).length > 0;
+  useEffect(() => {
+    if (refApplied.current || !hasLines) return;
+    const ref = document.cookie
+      .split("; ")
+      .find((c) => c.startsWith("nvy-ref="))
+      ?.split("=")[1];
+    if (!ref) return;
+    const active = (discountCodes ?? []).map((d) => d?.code);
+    if (!active.includes(ref)) {
+      discountCodesUpdate([...(active.filter(Boolean) as string[]), ref]);
+    }
+    refApplied.current = true;
+  }, [hasLines, discountCodes, discountCodesUpdate]);
 
   const cartLines = (lines ?? []) as Line[];
   const busy = status === "creating" || status === "updating";
@@ -98,12 +127,39 @@ export default function CartPage() {
                 <h2 className="cart-line-name">
                   {merchandise?.product?.title ?? "Product"}
                 </h2>
-                <p
-                  className="mono-body"
-                  style={{ fontSize: "13px", color: "var(--color-ink-muted)" }}
-                >
-                  Qty {line.quantity}
-                </p>
+                <div className="cart-line-qty" aria-label="Quantity">
+                  <button
+                    type="button"
+                    className="cart-qty-btn mono-cta"
+                    aria-label="Decrease quantity"
+                    disabled={busy || (line.quantity ?? 1) <= 1}
+                    onClick={() =>
+                      line.id &&
+                      linesUpdate([
+                        { id: line.id, quantity: (line.quantity ?? 1) - 1 },
+                      ])
+                    }
+                  >
+                    −
+                  </button>
+                  <span className="mono-body" aria-live="polite" style={{ fontSize: "13px", minWidth: "24px", textAlign: "center" }}>
+                    {line.quantity}
+                  </span>
+                  <button
+                    type="button"
+                    className="cart-qty-btn mono-cta"
+                    aria-label="Increase quantity"
+                    disabled={busy || (line.quantity ?? 1) >= 9}
+                    onClick={() =>
+                      line.id &&
+                      linesUpdate([
+                        { id: line.id, quantity: (line.quantity ?? 1) + 1 },
+                      ])
+                    }
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               <div className="cart-line-right">
@@ -137,12 +193,38 @@ export default function CartPage() {
             </span>
           )}
         </div>
+        {(discountCodes ?? []).filter((d) => d?.applicable).length > 0 && (
+          <div className="cart-summary-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
+            <span className="mono-label" style={{ color: "var(--color-ink-muted)" }}>
+              Code applied
+            </span>
+            <span className="mono-cta" style={{ color: "var(--color-strawberry)" }}>
+              {(discountCodes ?? [])
+                .filter((d) => d?.applicable)
+                .map((d) => d?.code)
+                .join(" · ")}
+            </span>
+          </div>
+        )}
+        {cost?.totalAmount &&
+          cost?.subtotalAmount &&
+          Number(cost.totalAmount.amount) < Number(cost.subtotalAmount.amount) && (
+            <div className="cart-summary-row" style={{ borderBottom: "none", paddingBottom: 0 }}>
+              <span className="mono-label" style={{ color: "var(--color-ink-muted)" }}>
+                After discounts
+              </span>
+              <span className="cart-summary-total" style={{ fontSize: "18px" }}>
+                <Money data={cost.totalAmount} />
+              </span>
+            </div>
+          )}
         <p
           className="mono-body"
           style={{
             fontSize: "11px",
             color: "var(--color-ink-faint)",
             marginBottom: "24px",
+            marginTop: "12px",
           }}
         >
           Taxes and shipping calculated at checkout.
@@ -254,6 +336,25 @@ function CartStyles() {
         color: var(--color-ink);
         margin: 0 0 6px;
       }
+
+      .cart-line-qty {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        border: 0.4px solid var(--color-rule);
+        border-radius: var(--radius-canvas);
+        padding: 2px 6px;
+      }
+      .cart-qty-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px 8px;
+        color: var(--color-ink);
+        transition: opacity 200ms ease;
+      }
+      .cart-qty-btn:hover:not(:disabled) { opacity: 0.5; }
+      .cart-qty-btn:disabled { opacity: 0.25; cursor: not-allowed; }
 
       .cart-line-right {
         display: flex;
