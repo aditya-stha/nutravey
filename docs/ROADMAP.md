@@ -61,10 +61,29 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 
 ## Launch blockers (accounts/credentials — all you)
 
-- [ ] Vercel project + env vars (see .env.local.example)
-- [ ] Shopify: 4 products (incl. `the-curation`), Storefront + Admin tokens,
-      webhook subscriptions + secret
-- [ ] PASS_SIGNING_SECRET (openssl rand -hex 32)
-- [ ] Resend account + domain (reservation emails)
+- [x] Shopify store connected: Electrolytes Powder Mix (3 variants, $42,
+      USD) + Headless channel public token; live add-to-cart verified
+- [ ] Automatic discount "The Curation — Save $18" ($6 off each of the 3
+      variants, min qty 3) — the bundle page promises it at checkout
+- [ ] Subscribe & Save: install the free "Shopify Subscriptions" app and
+      create a selling plan group on the Electrolytes product — the PDP
+      selector appears automatically
+- [ ] Bogus Gateway test order (card `1` at checkout) — verify order lands
+      in admin
+- [ ] Vercel project + env vars (copy from .env.local + the rest of
+      .env.local.example)
+- [ ] Webhook subscription (orders/create, products/update →
+      https://<domain>/api/webhooks/shopify) + SHOPIFY_WEBHOOK_SECRET —
+      needs the deployed URL, so after first deploy
+- [ ] SHOPIFY_ADMIN_CLIENT_SECRET (Dev Dashboard app) — waitlist leads →
+      tagged customers (leads only logged until then)
+- [ ] PASS_SIGNING_SECRET (openssl rand -hex 32) — REQUIRED in production
+- [ ] Resend account + verified domain (reservation emails)
 - [ ] Real NEXT_PUBLIC_LAUNCH_DATE
-- [ ] Decide: honor 15% VIP discount copy (currently promised on the form)
+- [ ] Decide: honor 15% VIP discount copy (promised on the reservation
+      form + pass page); create the launch discount for the pre-launch
+      customer segment
+- [ ] Launch day: flip NEXT_PUBLIC_PRE_LAUNCH=false in Vercel, email the
+      pre-launch list, remove Shopify store password
+- [ ] Real batch/COA data: replace pilot placeholders in lib/batches.ts,
+      drop COA PDFs in /public/coa/, print QR (/ritual/<lot>) on packaging
