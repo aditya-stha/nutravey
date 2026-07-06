@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import CurationDetail from "@/components/CurationDetail";
-import { curation } from "@/lib/products";
+import { curation, products } from "@/lib/products";
 import { getShopifyProduct } from "@/lib/shopify";
 
 export const metadata: Metadata = {
@@ -9,12 +9,17 @@ export const metadata: Metadata = {
 };
 
 export default async function TheCurationPage() {
-  // The bundle is a normal Shopify product whose handle matches the slug.
-  const shopify = await getShopifyProduct(curation.slug);
-  return (
-    <CurationDetail
-      variantId={shopify?.variantId}
-      available={shopify?.available ?? false}
-    />
+  /* The bundle is a composite, not a Shopify product: adding it puts one of
+     each flavour variant in the cart. The $108 bundle price is applied by an
+     automatic discount configured in Shopify admin. (One cached catalog
+     query serves all three lookups.) */
+  const flavours = await Promise.all(
+    products.map((p) => getShopifyProduct(p.slug)),
   );
+  const allLive = flavours.every((f) => f?.available);
+  const variantIds = allLive
+    ? flavours.map((f) => f!.variantId)
+    : [];
+
+  return <CurationDetail variantIds={variantIds} available={allLive} />;
 }

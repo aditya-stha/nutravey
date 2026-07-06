@@ -12,14 +12,14 @@ import { track } from "@/lib/analytics";
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
 interface CurationDetailProps {
-  /** Shopify variant GID for the bundle product; absent when Shopify isn't
-   *  configured or the bundle isn't published — CTAs disable. */
-  variantId?: string;
+  /** The three flavour variant GIDs — the bundle is a composite: adding it
+   *  puts one of each in the cart. Empty when any flavour is offline. */
+  variantIds?: string[];
   available?: boolean;
 }
 
 export default function CurationDetail({
-  variantId,
+  variantIds = [],
   available = false,
 }: CurationDetailProps) {
   const reduce = useReducedMotion();
@@ -28,11 +28,13 @@ export default function CurationDetail({
   const { linesAdd, status, checkoutUrl } = useCart();
   const cartBusy = status === "creating" || status === "updating";
   // Cart mutations need the public token even when product data is tokenless.
-  const purchasable = Boolean(variantId) && available && isShopifyConfigured;
+  const purchasable =
+    variantIds.length === 3 && available && isShopifyConfigured;
 
   function addToCart(): boolean {
-    if (!variantId || !purchasable || cartBusy) return false;
-    linesAdd([{ merchandiseId: variantId, quantity: qty }]);
+    if (!purchasable || cartBusy) return false;
+    // One of each flavour per bundle; the qty selector multiplies the set.
+    linesAdd(variantIds.map((id) => ({ merchandiseId: id, quantity: qty })));
     track("add_to_cart", {
       item_id: curation.slug,
       item_name: curation.name,
@@ -270,6 +272,19 @@ export default function CurationDetail({
                     Buy Now →
                   </button>
                 </div>
+                {purchasable && (
+                  <p
+                    className="mono-body"
+                    style={{
+                      fontSize: "12px",
+                      color: "var(--color-ink-faint)",
+                      marginTop: "12px",
+                    }}
+                  >
+                    Adds all three rituals to your cart — the {curation.savingsLabel.toLowerCase()} bundle
+                    saving is applied automatically at checkout.
+                  </p>
+                )}
                 {!purchasable && (
                   <p
                     className="mono-body"
@@ -279,8 +294,8 @@ export default function CurationDetail({
                       marginTop: "12px",
                     }}
                   >
-                    {!variantId
-                      ? "The bundle isn't connected to the storefront yet."
+                    {variantIds.length !== 3
+                      ? "The bundle connects once all three flavours are live on the storefront."
                       : !isShopifyConfigured
                         ? "Live pricing connected — add the Storefront token to open the cart."
                         : "Currently unavailable."}
