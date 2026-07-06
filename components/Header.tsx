@@ -2,6 +2,8 @@ import Link from "next/link";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 import MobileMenu from "@/components/MobileMenu";
+import CartLink from "@/components/cart/CartLink";
+import { isPreLaunch } from "@/lib/shopify-config";
 
 const navLinks = [
   { label: "Shop", href: "/shop" },
@@ -9,6 +11,12 @@ const navLinks = [
   { label: "About", href: "/about" },
   { label: "Standards", href: "/standards" },
 ];
+
+/* Commerce entries join the nav in live mode only — during pre-launch the
+   cart is offline and accounts are a stub, so linking them is a dead end. */
+const commerceLinks = isPreLaunch
+  ? []
+  : [{ label: "Account", href: "/account" }];
 
 export default function Header() {
   return (
@@ -36,7 +44,7 @@ export default function Header() {
               className="flex items-center"
               style={{ gap: "40px", listStyle: "none", margin: 0, padding: 0 }}
             >
-              {navLinks.map(({ label, href }) => (
+              {[...navLinks, ...commerceLinks].map(({ label, href }) => (
                 <li key={label}>
                   <Link
                     href={href}
@@ -47,6 +55,11 @@ export default function Header() {
                   </Link>
                 </li>
               ))}
+              {!isPreLaunch && (
+                <li>
+                  <CartLink />
+                </li>
+              )}
             </ul>
           </nav>
           <ThemeToggle />
@@ -54,7 +67,13 @@ export default function Header() {
 
         {/* Mobile: hamburger trigger (overlay rendered conditionally) */}
         <div className="site-header-mobile">
-          <MobileMenu links={navLinks} />
+          <MobileMenu
+            links={[
+              ...navLinks,
+              ...commerceLinks,
+              ...(isPreLaunch ? [] : [{ label: "Cart", href: "/cart" }]),
+            ]}
+          />
         </div>
       </div>
 
