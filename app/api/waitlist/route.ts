@@ -154,12 +154,11 @@ export async function POST(request: NextRequest) {
     10000 + Math.random() * 90000,
   )}`;
 
+  /* Persistence failure is our ops problem, never the customer's: the pass
+     still issues and the lead is recoverable from this log line. */
   const persisted = await createShopifyLead(name, email, item, flavor, id);
   if (!persisted) {
-    return NextResponse.json(
-      { ok: false, error: "We couldn't save your reservation. Try again." },
-      { status: 502 },
-    );
+    log.warn("waitlist_lead_unpersisted", { email, item, id });
   }
 
   // The slot ID doubles as a shareable referral code (friends save FRIEND_PCT%).
