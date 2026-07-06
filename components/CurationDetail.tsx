@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { motion, useReducedMotion } from "framer-motion";
+import { useRouter } from "next/navigation";
 import { useCart } from "@shopify/hydrogen-react";
 import { products, curation } from "@/lib/products";
 import { isPreLaunch, isShopifyConfigured } from "@/lib/shopify-config";
@@ -26,13 +27,22 @@ export default function CurationDetail({
   const [qty, setQty] = useState(1);
 
   const { linesAdd, status, checkoutUrl } = useCart();
+  const router = useRouter();
+
+  const [goToCartWhenSettled, setGoToCartWhenSettled] = useState(false);
+  useEffect(() => {
+    if (goToCartWhenSettled && status === "idle") {
+      router.push("/cart");
+    }
+  }, [goToCartWhenSettled, status, router]);
   const cartBusy = status === "creating" || status === "updating";
   // Cart mutations need the public token even when product data is tokenless.
   const purchasable =
     variantIds.length === 3 && available && isShopifyConfigured;
 
-  function addToCart(): boolean {
+  function addToCart(navigate = true): boolean {
     if (!purchasable || cartBusy) return false;
+    if (navigate) setGoToCartWhenSettled(true);
     // One of each flavour per bundle; the qty selector multiplies the set.
     linesAdd(variantIds.map((id) => ({ merchandiseId: id, quantity: qty })));
     track("add_to_cart", {
@@ -46,7 +56,7 @@ export default function CurationDetail({
   }
 
   function buyNow() {
-    if (!addToCart()) return;
+    if (!addToCart(false)) return;
     track("begin_checkout", { item_id: curation.slug, source: "buy_now" });
     window.location.href = checkoutUrl ?? "/cart";
   }
@@ -258,7 +268,7 @@ export default function CurationDetail({
                     type="button"
                     className="cur-cta-primary mono-cta"
                     style={{ backgroundColor: "var(--color-oxblood)" }}
-                    onClick={addToCart}
+                    onClick={() => addToCart()}
                     disabled={!purchasable || cartBusy}
                   >
                     {cartBusy ? "Adding…" : "Add Curation to Cart"}

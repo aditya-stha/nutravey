@@ -3,6 +3,7 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { motion, useReducedMotion, AnimatePresence } from "framer-motion";
 import { useCart } from "@shopify/hydrogen-react";
 import type { Product } from "@/lib/products";
@@ -85,6 +86,16 @@ export default function ProductDetail({
   };
 
   const { linesAdd, status, checkoutUrl } = useCart();
+  const router = useRouter();
+
+  /* After an Add to Cart, follow the shopper to the cart — but only once
+     the Storefront mutation settles, so the cart page never flashes empty. */
+  const [goToCartWhenSettled, setGoToCartWhenSettled] = useState(false);
+  useEffect(() => {
+    if (goToCartWhenSettled && status === "idle") {
+      router.push("/cart");
+    }
+  }, [goToCartWhenSettled, status, router]);
 
   /* `creating`/`updating` mean a Storefront mutation is in flight.
      Cart mutations need the public token even when product data arrived
@@ -102,9 +113,11 @@ export default function ProductDetail({
   }, [product.slug, product.name, product.price]);
 
   /** Add the selected quantity to the Storefront cart. Returns true when the
-   *  add was dispatched (used by Buy Now to then redirect to checkout). */
-  function addToCart(): boolean {
+   *  add was dispatched (used by Buy Now to then redirect to checkout).
+   *  `navigate` sends the shopper to /cart once the add settles. */
+  function addToCart(navigate = true): boolean {
     if (!variantId || !purchasable || cartBusy) return false;
+    if (navigate) setGoToCartWhenSettled(true);
     linesAdd([
       {
         merchandiseId: variantId,
@@ -124,7 +137,7 @@ export default function ProductDetail({
   }
 
   function buyNow() {
-    if (!addToCart()) return;
+    if (!addToCart(false)) return;
     track("begin_checkout", { item_id: product.slug, source: "buy_now" });
     // `checkoutUrl` exists only once the cart has been created on the
     // Storefront. If it's ready, jump straight to Shopify checkout; otherwise
@@ -474,7 +487,7 @@ export default function ProductDetail({
                     type="button"
                     className="pdp-cta-primary mono-cta"
                     style={{ backgroundColor: product.accent }}
-                    onClick={addToCart}
+                    onClick={() => addToCart()}
                     disabled={!purchasable || cartBusy}
                     aria-busy={cartBusy}
                   >
