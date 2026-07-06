@@ -5,6 +5,7 @@ import {
   getCustomer,
   getShopId,
 } from "@/lib/customer-account";
+import { isPreLaunch } from "@/lib/shopify-config";
 import SignIn from "@/components/account/SignIn";
 import SignOut from "@/components/account/SignOut";
 import OrderActions from "@/components/account/OrderActions";
@@ -46,7 +47,11 @@ export default async function AccountPage() {
   if (!customerAccountsEnabled) {
     return (
       <Shell>
-        <h1 style={h1Style}>Accounts open with the store.</h1>
+        <h1 style={h1Style}>
+          {isPreLaunch
+            ? "Accounts open with the store."
+            : "Sign-in is being connected."}
+        </h1>
         <p
           className="mono-body"
           style={{
@@ -57,12 +62,12 @@ export default async function AccountPage() {
             marginBottom: "32px",
           }}
         >
-          Order history and saved details arrive at launch. Until then, your
-          Ritual Pass link is your record — and reservations need no account
-          at all.
+          {isPreLaunch
+            ? "Order history and saved details arrive at launch. Until then, your Ritual Pass link is your record — and reservations need no account at all."
+            : "Customer sign-in is one configuration step away (Customer Account API client id). Your orders are safe with Shopify meanwhile — the confirmation email holds your order link and live tracking."}
         </p>
         <Link href="/shop" className="mono-cta" style={{ color: "var(--color-ink)" }}>
-          Reserve your ritual →
+          {isPreLaunch ? "Reserve your ritual →" : "Back to the collection →"}
         </Link>
       </Shell>
     );
