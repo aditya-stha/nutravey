@@ -16,7 +16,8 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 - [x] Holo Ritual Pass artifact (shop + PDP + /pass)
 - [ ] **Real photography** (you) — powder-in-water macro, hands, ritual
       moments. The one place Humantra visibly outclasses us; highest-priority
-      spend.
+      spend. (2026-07-08: renders reorganized/optimized to webp under
+      /images/products — still renders, not photography.)
 - [ ] Flavour-world art direction per PDP (accent system is the skeleton)
 - [ ] One signature interactive moment per page; no template genericism
       (their testimonial carousel / circular flavour chips)
@@ -70,8 +71,15 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
       selector appears automatically
 - [ ] Bogus Gateway test order (card `1` at checkout) — verify order lands
       in admin
-- [ ] Vercel project + env vars (copy from .env.local + the rest of
-      .env.local.example)
+- [x] Vercel deploy — live at nutravey.vercel.app (nutravey.com DNS split
+      still pending: root → Vercel, shop.nutravey.com → Shopify primary)
+- [ ] Vercel env vars — audit against .env.local.example; **PASS_SIGNING_SECRET
+      is now HARD-REQUIRED in production** (token signing fails closed:
+      reservations 500 without it)
+- [ ] Dev Dashboard app scopes: grant read/write_customers,
+      read/write_orders, read/write_discounts (metaobjects already work),
+      then RE-RELEASE/reinstall the app — waitlist tagging, referral codes,
+      reward lookups, and order stamping stay dormant until then
 - [ ] Webhook subscription (orders/create, products/update →
       https://<domain>/api/webhooks/shopify) + SHOPIFY_WEBHOOK_SECRET —
       needs the deployed URL, so after first deploy
@@ -91,3 +99,22 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 - [x] Customer accounts (Customer Account API, env-gated): PKCE sign-in,
       /account order history — register /account/callback as callback URI
       and set NEXT_PUBLIC_SHOPIFY_CUSTOMER_CLIENT_ID to activate
+
+## Infrastructure notes (2026-07-08 session)
+
+- [x] Shared signed-token machinery — production fails closed without
+      PASS_SIGNING_SECRET (no forgeable links issued or honored)
+- [x] Shared per-IP rate limiter with recency eviction (auth, waitlist,
+      reviews)
+- [x] /api/unlock: server-side store-password pass-through so checkout
+      works while the store is password-protected (needs
+      SHOPIFY_STORE_PASSWORD env)
+- [x] Email HTML-escaping; webhook failure isolation; deterministic
+      referral reward codes
+- [x] Splash plays once per session; asset tree consolidated under
+      /images as webp
+- [ ] Shopify notification templates: customer-welcome Liquid customized
+      (reference/notifications) — hardcodes nutravey.vercel.app, update
+      site_url when nutravey.com lands; port remaining templates
+- [ ] JetBrains Mono woff2 staged in /public/fonts — self-hosting swap
+      (drop the Google Fonts dependency) not wired yet
