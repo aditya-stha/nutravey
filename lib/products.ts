@@ -45,7 +45,7 @@ export const products: Product[] = [
     tagline: "Bold vitality.",
     description:
       "A morning surge of electrolytes, B-vitamins, and antioxidants — engineered for the days that demand momentum.",
-    image: "/mock_strawberry.png",
+    image: "/images/products/strawberry.webp",
     accent: "#C52B56",
     trioCta: "Begin Ritual",
     price: 42,
@@ -123,7 +123,7 @@ export const products: Product[] = [
     tagline: "Soft radiance.",
     description:
       "A composed afternoon reset — botanical lychee, hyaluronic acid, and skin-supportive vitamins for a quieter kind of glow.",
-    image: "/mock_lychee.png",
+    image: "/images/products/lychee.webp",
     accent: "#AA4198",
     trioCta: "Discover Flavour",
     price: 42,
@@ -202,7 +202,7 @@ export const products: Product[] = [
     tagline: "Pure clarity.",
     description:
       "A clean, focusing daily ritual — Mediterranean lemon, magnesium, and a calm B-complex for sustained mental clarity.",
-    image: "/mock_lemon.png",
+    image: "/images/products/lemon.webp",
     accent: "#FADC33",
     trioCta: "Explore Ritual",
     price: 42,

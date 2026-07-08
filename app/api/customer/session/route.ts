@@ -6,6 +6,7 @@ import {
   recover,
   TOKEN_COOKIE,
 } from "@/lib/customer-account";
+import { createRateLimiter, clientIp } from "@/lib/rate-limit";
 import { log } from "@/lib/log";
 
 /* ─── Customer session ──────────────────────────────────────────────────────
@@ -13,18 +14,8 @@ import { log } from "@/lib/log";
    Sets the httpOnly session cookie on success. Rate-limited per IP —
    an auth endpoint is a password-guessing surface. */
 
-const RATE_LIMIT = 10; // attempts per IP…
-const RATE_WINDOW_MS = 10 * 60 * 1000; // …per 10 minutes
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 10_000) hits.clear();
-  return recent.length > RATE_LIMIT;
-}
+// 10 attempts per IP per 10 minutes.
+const rateLimited = createRateLimiter({ limit: 10, windowMs: 10 * 60 * 1000 });
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -32,8 +23,7 @@ export async function POST(request: NextRequest) {
   if (!customerAccountsEnabled) {
     return NextResponse.json({ ok: false }, { status: 503 });
   }
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = clientIp(request);
   if (rateLimited(ip)) {
     return NextResponse.json(
       { ok: false, error: "Too many attempts — wait a few minutes." },
@@ -75,9 +65,9 @@ export async function POST(request: NextRequest) {
   if (mode !== "login" && mode !== "register") {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
-  if (password.length < 6) {
+  if (password.length < 8) {
     return NextResponse.json(
-      { ok: false, error: "Password needs at least 6 characters." },
+      { ok: false, error: "Password needs at least 8 characters." },
       { status: 400 },
     );
   }

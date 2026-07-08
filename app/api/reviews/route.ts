@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { reviewEligibility, persistReview } from "@/lib/reviews";
+import { createRateLimiter, clientIp } from "@/lib/rate-limit";
 import { log } from "@/lib/log";
+
+// Purchase-gating is the real barrier; this just stops a verified buyer
+// from flooding the metaobject store.
+const rateLimited = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 1000 });
 
 /* GET ?product=<slug> → { eligible, reason } for the signed-in customer.
    POST { product, rating, title, body } → creates a VERIFIED review.
@@ -15,6 +20,13 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  if (rateLimited(clientIp(request))) {
+    return NextResponse.json(
+      { ok: false, error: "Too many reviews — try again in a few minutes." },
+      { status: 429 },
+    );
+  }
+
   let body: {
     product?: unknown;
     rating?: unknown;

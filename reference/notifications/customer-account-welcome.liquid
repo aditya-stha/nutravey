@@ -1,0 +1,175 @@
+{% comment %}
+  Nutravey — Customer account welcome notification.
+  Paste into Shopify Admin → Settings → Notifications → Customer account welcome.
+
+  site_url must point at the Next.js storefront: it serves the LemonMilk woff2s
+  (/fonts/LemonMilk/) and the email wordmark PNGs (/images/email/). Gmail strips
+  SVG images, which is why the wordmark ships as PNG exports of the SVG.
+
+  Color values are the site tokens from app/globals.css, with translucent inks
+  pre-flattened onto their surface for clients that drop rgba():
+    cream #FAFAFA · oxblood #3D1322 · aubergine #2D0F2A
+    ink-muted on cream → #896F78 · body ink (70%) → #765863
+    hairline on cream → #D4CCCF · hairline on aubergine → #41273F
+    muted cream on aubergine → #9E909C · faint cream on aubergine → #6B5568
+{% endcomment %}
+{% assign site_url = 'https://nutravey.vercel.app' %}
+{% capture email_title %}Welcome to the ritual.{% endcapture %}
+{% capture email_body %}Your Nutravey account is live. Next time you shop, checkout is instant — and every ritual you build lives in one place.{% endcapture %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>{{ email_title }}</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    /* LemonMilk — served by the storefront; falls back to Georgia elsewhere */
+    @font-face {
+      font-family: "LEMONMILK";
+      src: url("{{ site_url }}/fonts/LemonMilk/LEMONMILK-Regular.woff2") format("woff2"),
+           url("{{ site_url }}/fonts/LemonMilk/LEMONMILK-Regular.woff") format("woff");
+      font-weight: 400;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "LEMONMILK";
+      src: url("{{ site_url }}/fonts/LemonMilk/LEMONMILK-Medium.woff2") format("woff2"),
+           url("{{ site_url }}/fonts/LemonMilk/LEMONMILK-Medium.woff") format("woff");
+      font-weight: 500;
+      font-style: normal;
+    }
+   @font-face {
+      font-family: "JetBrains Mono";
+      src:
+           url("{{ site_url }}/fonts/JetBrainsMono/JetBrainsMono-Regular.woff2") format("woff2"),
+           url("{{ site_url }}/fonts/JetBrainsMono/JetBrainsMono-Regular.woff") format("woff");
+      font-weight: 400;
+      font-style: normal;
+    }
+    body, table, td { margin: 0; padding: 0; }
+    body { background: #FAFAFA !important; color: #3D1322; -webkit-font-smoothing: antialiased; }
+    a, a:visited { color: #3D1322; }
+    .button__cell { background: #3D1322 !important; border-radius: 12px; }
+    .button__text {
+      font-family: 'JetBrains Mono', 'Courier New', monospace !important;
+      font-size: 13px !important;
+      font-weight: 500 !important;
+      color: #FAFAFA !important;
+      text-decoration: none !important;
+      text-transform: uppercase !important;
+      letter-spacing: 0.04em !important;
+    }
+    @media only screen and (max-width: 480px) {
+      .nv-col { padding-left: 20px !important; padding-right: 20px !important; }
+      .nv-h1 { font-size: 26px !important; }
+    }
+  </style>
+</head>
+<body style="background:#FAFAFA; margin:0; padding:0;">
+  <table class="body" width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#FAFAFA;">
+    <tr>
+      <td align="center">
+
+        <!-- HEADER — cream surface, left-anchored wordmark on the rail -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#FAFAFA;">
+          <tr>
+            <td align="center" class="nv-col" style="padding: 56px 32px 0;">
+              <table cellpadding="0" cellspacing="0" role="presentation" width="560" style="max-width:560px; width:100%;">
+                <tr>
+                  <td align="left" style="padding-bottom: 28px;">
+                    <a href="{{ site_url }}" style="text-decoration:none; line-height:0;">
+                      <img src="{{ site_url }}/nutravey-workmark.svg" alt="nutravey" width="168" style="display:block; width:168px; height:auto; border:0; font-family:'LEMONMILK', Georgia, serif; font-size:20px; color:#3D1322; letter-spacing:0.04em;">
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border-top: 1px solid #D4CCCF; font-size:0; line-height:0;">&nbsp;</td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- CONTENT -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#FAFAFA;">
+          <tr>
+            <td align="center" class="nv-col" style="padding: 44px 32px 0;">
+              <table cellpadding="0" cellspacing="0" role="presentation" width="560" style="max-width:560px; width:100%;">
+
+                <tr>
+                  <td align="left" style="font-family:'JetBrains Mono','Courier New',monospace; font-size:11px; color:#896F78; letter-spacing:0.18em; text-transform:uppercase; padding-bottom: 20px;">
+                    01 &mdash; Account activated
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="left" class="nv-h1" style="font-family:'LEMONMILK', Georgia, serif; font-size:32px; font-weight:500; line-height:1.1; letter-spacing:-0.01em; color:#3D1322; padding-bottom: 24px;">
+                    {{ email_title }}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="left" style="font-family:'JetBrains Mono','Courier New',monospace; font-size:14px; line-height:1.7; letter-spacing:0; color:#765863; padding-bottom: 40px;">
+                    {{ email_body }}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td align="left" style="padding-bottom: 64px;">
+                    <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+                      <tr>
+                        <td class="button__cell" bgcolor="#3D1322" style="padding: 16px 32px; border-radius: 12px;">
+                          <a href="{{ site_url }}" class="button__text" style="font-family:'JetBrains Mono','Courier New',monospace; font-size:13px; font-weight:500; color:#FAFAFA; text-decoration:none; text-transform:uppercase; letter-spacing:0.04em;">Enter the ritual</a>
+                        </td>
+                      </tr>
+                    </table>
+                  </td>
+                </tr>
+
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <!-- FOOTER — aubergine surface, per site footer -->
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#2D0F2A;" bgcolor="#2D0F2A">
+          <tr>
+            <td align="center" class="nv-col" style="padding: 48px 32px 40px;">
+              <table cellpadding="0" cellspacing="0" role="presentation" width="560" style="max-width:560px; width:100%;">
+                <tr>
+                  <td align="left" style="padding-bottom: 24px;">
+                    <a href="{{ site_url }}" style="text-decoration:none; line-height:0;">
+                      <img src="{{ site_url }}/nutravey-workmark-white.svg" alt="nutravey" width="120" style="display:block; width:120px; height:auto; border:0; font-family:'LEMONMILK', Georgia, serif; font-size:16px; color:#FAFAFA; letter-spacing:0.04em;">
+                    </a>
+                  </td>
+                </tr>
+                <tr>
+                  <td align="left" style="font-family:'LEMONMILK', Georgia, serif; font-size:14px; font-weight:400; color:#FAFAFA; letter-spacing:0.02em; padding-bottom: 16px;">
+                    Pause. Reset. Revive.
+                  </td>
+                </tr>
+                <tr>
+                  <td align="left" style="font-family:'JetBrains Mono','Courier New',monospace; font-size:11px; line-height:1.7; color:#9E909C; padding-bottom: 32px;">
+                    Questions? Reply here or write to
+                    <a href="mailto:{{ shop.email }}" style="color:#FAFAFA; text-decoration:underline;">{{ shop.email }}</a>
+                  </td>
+                </tr>
+                <tr>
+                  <td style="border-top: 1px solid #41273F; font-size:0; line-height:0;">&nbsp;</td>
+                </tr>
+                <tr>
+                  <td align="left" style="padding-top: 20px; font-family:'JetBrains Mono','Courier New',monospace; font-size:10px; color:#6B5568; letter-spacing:0.18em; text-transform:uppercase;">
+                    &copy; {{ 'now' | date: '%Y' }} Nutravey. All rights reserved.
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

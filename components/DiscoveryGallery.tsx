@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -16,11 +17,10 @@ interface GalleryCard {
   z: number;
 }
 
-/* Six brand-story images. Filenames in /public/images/ contain spaces
-   and one is lowercase (`post 4.png`), so each src is URL-encoded. */
+/* Six brand-story images. */
 const cards: GalleryCard[] = [
   {
-    src: "/images/Post%201.png",
+    src: "/images/gallery/moment-01.webp",
     alt: "Brand moment one",
     label: "MOMENT 01",
     title: "THE FIRST POUR",
@@ -31,7 +31,7 @@ const cards: GalleryCard[] = [
     z: 7,
   },
   {
-    src: "/images/Post%202.png",
+    src: "/images/gallery/moment-02.webp",
     alt: "Brand moment two",
     label: "MOMENT 02",
     title: "THE MORNING LIGHT",
@@ -42,7 +42,7 @@ const cards: GalleryCard[] = [
     z: 8,
   },
   {
-    src: "/images/Post%203.png",
+    src: "/images/gallery/moment-03.webp",
     alt: "Brand moment three",
     label: "MOMENT 03",
     title: "THE QUIET HOUR",
@@ -53,7 +53,7 @@ const cards: GalleryCard[] = [
     z: 9,
   },
   {
-    src: "/images/post%204.png",
+    src: "/images/gallery/moment-04.webp",
     alt: "Brand moment four",
     label: "MOMENT 04",
     title: "THE BRIGHT NOTE",
@@ -64,7 +64,7 @@ const cards: GalleryCard[] = [
     z: 9,
   },
   {
-    src: "/images/Post%205.png",
+    src: "/images/gallery/moment-05.webp",
     alt: "Brand moment five",
     label: "MOMENT 05",
     title: "THE EVENING SET",
@@ -75,7 +75,7 @@ const cards: GalleryCard[] = [
     z: 8,
   },
   {
-    src: "/images/Post%206.png",
+    src: "/images/gallery/moment-06.webp",
     alt: "Brand moment six",
     label: "MOMENT 06",
     title: "THE STILL FRAME",
@@ -90,11 +90,20 @@ const cards: GalleryCard[] = [
 export default function DiscoveryGallery() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const reduce = useReducedMotion();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (openIndex === null) return;
+    // The close button is the dialog's only focusable element, so focusing
+    // it on open and pinning Tab to it is a complete focus trap.
+    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpenIndex(null);
+      if (e.key === "Tab") {
+        e.preventDefault();
+        closeRef.current?.focus();
+      }
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -102,6 +111,7 @@ export default function DiscoveryGallery() {
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      triggerRef.current?.focus(); // hand focus back to the opening card
     };
   }, [openIndex]);
 
@@ -124,11 +134,13 @@ export default function DiscoveryGallery() {
                   zIndex: c.z,
                 } as CSSProperties
               }
-              onClick={() => setOpenIndex(i)}
+              onClick={(e) => {
+                triggerRef.current = e.currentTarget;
+                setOpenIndex(i);
+              }}
               aria-label={`Open ${c.title}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.src} alt={c.alt} />
+              <Image src={c.src} alt={c.alt} width={480} height={600} sizes="180px" />
               <span className="gcard-label">{c.label}</span>
             </button>
           ))}
@@ -170,14 +182,21 @@ export default function DiscoveryGallery() {
               transition={{ duration: 0.3, ease: "easeOut" }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={active.src} alt={active.alt} className="gallery-image" />
+              <Image
+                src={active.src}
+                alt={active.alt}
+                width={1200}
+                height={1500}
+                sizes="(max-width: 648px) 100vw, 600px"
+                className="gallery-image"
+              />
               <div className="gallery-meta">
                 <h3 className="gallery-title">{active.title}</h3>
                 <p className="gallery-desc">{active.description}</p>
               </div>
               <button
                 type="button"
+                ref={closeRef}
                 className="gallery-close"
                 onClick={() => setOpenIndex(null)}
                 aria-label="Close"
@@ -271,7 +290,7 @@ export default function DiscoveryGallery() {
         }
 
         .gallery-tag {
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 12px;
           letter-spacing: 0.2em;
           text-transform: uppercase;
@@ -291,7 +310,7 @@ export default function DiscoveryGallery() {
         }
 
         .gallery-body {
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 15px;
           color: color-mix(in srgb, var(--color-ink) 65%, transparent);
           max-width: 480px;
@@ -301,7 +320,7 @@ export default function DiscoveryGallery() {
 
         .gallery-cta {
           display: inline-block;
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 13px;
           letter-spacing: 0.15em;
           text-transform: uppercase;
@@ -391,7 +410,7 @@ export default function DiscoveryGallery() {
           text-transform: uppercase;
         }
         .gallery-desc {
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 14px;
           color: rgba(245, 235, 224, 0.65);
           margin: 0;

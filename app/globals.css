@@ -285,3 +285,11 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .canvas-glow { transition: none; }
 }
+
+/* ─── Splash gating ─────────────────────────────────────────────────────────
+   The theme-init inline script stamps data-splash="seen" for repeat views
+   this session, so the overlay never paints (or intercepts pointers) again
+   before hydration unmounts it. */
+html[data-splash="seen"] #nvy-splash {
+  display: none;
+}

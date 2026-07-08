@@ -48,3 +48,4 @@ __pycache__/
 # playwright
 /test-results/
 /playwright-report/
+.aider*

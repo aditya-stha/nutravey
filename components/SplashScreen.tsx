@@ -15,6 +15,16 @@ export default function SplashScreen() {
   const [unmount, setUnmount] = useState(false);
 
   useEffect(() => {
+    // Repeat view this session (CSS already hides it via data-splash) or a
+    // reduced-motion preference: skip straight past the hold + fade.
+    const seen = document.documentElement.dataset.splash === "seen";
+    const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (seen || reduceMotion) {
+      // Deferred past paint (lint: no sync setState in effects); the CSS
+      // data-splash gate already hides the overlay this frame.
+      const raf = requestAnimationFrame(() => setUnmount(true));
+      return () => cancelAnimationFrame(raf);
+    }
     const hide = setTimeout(() => setHiding(true), HOLD_MS);
     const remove = setTimeout(() => setUnmount(true), HOLD_MS + FADE_MS);
     return () => {
@@ -27,6 +37,7 @@ export default function SplashScreen() {
 
   return (
     <motion.div
+      id="nvy-splash"
       initial={{ opacity: 1 }}
       animate={{ opacity: hiding ? 0 : 1 }}
       transition={{ duration: FADE_MS / 1000, ease: EASE }}

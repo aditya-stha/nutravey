@@ -13,8 +13,9 @@ import { log } from "@/lib/log";
 export const FRIEND_PCT = 5;
 export const REWARD_PCT = 5;
 
-/** Slot IDs / referral codes look like NVY-ST-12345. */
-export const REFERRAL_CODE_RE = /^NVY-[A-Z]{2}-\d{5}$/;
+/** Slot IDs / referral codes look like NVY-ST-4829173 (5-digit codes are
+ *  the pre-CSPRNG format, still honored). */
+export const REFERRAL_CODE_RE = /^NVY-[A-Z]{2}-\d{5,7}$/;
 
 const CREATE_DISCOUNT = /* GraphQL */ `
   mutation discountCodeBasicCreate($basicCodeDiscount: DiscountCodeBasicInput!) {
@@ -32,8 +33,9 @@ interface CreateDiscountResponse {
   };
 }
 
-/** Creates a percentage discount code. Returns false on hard failure;
- *  "code already exists" counts as success (idempotent). */
+/** Creates a percentage discount code. "exists" (already created — e.g. a
+ *  webhook redelivery) is distinct from "created" so callers can make
+ *  side effects like reward emails idempotent. */
 export async function createDiscountCode({
   code,
   title,
@@ -44,7 +46,7 @@ export async function createDiscountCode({
   title: string;
   percent: number;
   usageLimit?: number;
-}): Promise<boolean> {
+}): Promise<"created" | "exists" | "failed"> {
   const data = await adminGraphQL<CreateDiscountResponse>(CREATE_DISCOUNT, {
     basicCodeDiscount: {
       title,
@@ -59,17 +61,15 @@ export async function createDiscountCode({
       ...(usageLimit ? { usageLimit } : {}),
     },
   });
-  if (!data) return false;
+  if (!data) return "failed";
   const errors = data.discountCodeBasicCreate.userErrors;
   if (errors.length > 0) {
-    const taken = errors.some((e) => /taken|exists/i.test(e.message));
-    if (!taken) {
-      log.error("discount_create_failed", { code, errors: errors.map((e) => e.message) });
-      return false;
-    }
+    if (errors.some((e) => /taken|exists/i.test(e.message))) return "exists";
+    log.error("discount_create_failed", { code, errors: errors.map((e) => e.message) });
+    return "failed";
   }
   log.info("discount_created", { code, percent, usageLimit });
-  return true;
+  return "created";
 }
 
 const CUSTOMER_BY_TAG = /* GraphQL */ `

@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+
 /* ─── Owned post-purchase page ──────────────────────────────────────────────
    Reached from the confirmation email's signed link. Shopify's checkout
    finishes the transaction; this page carries the brand past it — summary,

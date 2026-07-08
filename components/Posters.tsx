@@ -13,31 +13,31 @@ interface Slide {
 
 const slides: Slide[] = [
   {
-    src: "/Post%201.png",
+    src: "/images/posters/poster-01.webp",
     alt: "Runner mid-stride at first light",
     topic: "On Discipline",
     quote: "Before the world catches up.",
   },
   {
-    src: "/Post%202.png",
+    src: "/images/posters/poster-02.webp",
     alt: "Tennis player resting court-side with racket and ball",
     topic: "On Hydration",
     quote: "Restored, between sets.",
   },
   {
-    src: "/Post%203.png",
+    src: "/images/posters/poster-03.webp",
     alt: "Two athletes side by side",
     topic: "On Connection",
     quote: "Shared rituals, sharper edges.",
   },
   {
-    src: "/Post%204.png",
+    src: "/images/posters/poster-04.webp",
     alt: "Empty tennis court at dusk",
     topic: "On Focus",
     quote: "First, the inside. Then the line.",
   },
   {
-    src: "/Post%205.png",
+    src: "/images/posters/poster-05.webp",
     alt: "Woman holding a pilates pose",
     topic: "On Form",
     quote: "Form holds. Hydration follows.",

@@ -6,6 +6,7 @@
    totals, and the checkout URL all come from the hook. Must render inside
    <CartProvider> (mounted in the root layout). */
 
+import { unlockAndCheckout } from "@/lib/unlock-store";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { useCart, Money, Image } from "@shopify/hydrogen-react";
@@ -19,6 +20,8 @@ import { track } from "@/lib/analytics";
 
 type Line = CartLine | ComponentizableCartLine;
 
+
+
 export default function CartPage() {
   const {
     lines,
@@ -31,6 +34,10 @@ export default function CartPage() {
     discountCodes,
     discountCodesUpdate,
   } = useCart();
+
+   useEffect(() => {
+    if (checkoutUrl) console.log("Checkout URL:", checkoutUrl);
+  }, [checkoutUrl]);
 
   /* Referral auto-apply: /r/<code> stores the code in a cookie; once the
      cart exists, apply it exactly once. Shopify validates the code — an
@@ -232,21 +239,24 @@ export default function CartPage() {
 
         {checkoutUrl && (
           <a
-            href={checkoutUrl}
-            className="cart-checkout mono-cta"
-            aria-busy={busy}
-            onClick={() =>
-              track("begin_checkout", {
-                value: Number(cost?.subtotalAmount?.amount ?? 0),
-                currency: cost?.subtotalAmount?.currencyCode ?? "USD",
-                items: totalQuantity ?? 0,
-                source: "cart",
-              })
-            }
+          href={checkoutUrl}
+          className="cart-checkout mono-cta"
+          aria-busy={busy}
+          onClick={async (e) => {
+            e.preventDefault();
+            track("begin_checkout", {
+              value: Number(cost?.subtotalAmount?.amount ?? 0),
+              currency: cost?.subtotalAmount?.currencyCode ?? "USD",
+              items: totalQuantity ?? 0,
+              source: "cart",
+            });
+            await unlockAndCheckout(checkoutUrl);
+          }}
           >
-            {busy ? "Updating…" : "Checkout →"}
+          {busy ? "Updating…" : "Checkout →"}
           </a>
-        )}
+       )}
+
         <Link href="/shop" className="cart-continue mono-cta">
           Continue shopping
         </Link>

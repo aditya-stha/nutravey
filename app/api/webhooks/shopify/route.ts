@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "node:crypto";
+import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { products } from "@/lib/products";
 import { signOrder } from "@/lib/order-token";
@@ -10,7 +10,6 @@ import {
   REFERRAL_CODE_RE,
   REWARD_PCT,
 } from "@/lib/referral";
-import { randomBytes } from "node:crypto";
 import { log } from "@/lib/log";
 
 /* ─── Shopify webhook receiver ──────────────────────────────────────────────
@@ -78,6 +77,7 @@ export async function POST(request: NextRequest) {
       });
 
       // ── Owned post-purchase: branded confirmation with signed /order link.
+      // Isolated so a signing/email failure can't abort referral processing.
       const customer = (payload.customer ?? {}) as {
         email?: string;
         first_name?: string;
@@ -86,37 +86,46 @@ export async function POST(request: NextRequest) {
         (typeof payload.email === "string" && payload.email) ||
         customer.email ||
         "";
-      if (email) {
-        const orderToken = signOrder({
-          num: typeof payload.name === "string" ? payload.name : `#${payload.id}`,
-          name: customer.first_name ?? "there",
-          email,
-          total: String(payload.total_price ?? ""),
-          currency: String(payload.currency ?? ""),
-          items: lineItems
-            .slice(0, 6)
-            .map((li) => li.title ?? "")
-            .filter(Boolean),
-          statusUrl:
-            typeof payload.order_status_url === "string"
-              ? payload.order_status_url
-              : "",
-          ts: Date.now(),
-        });
-        const orderUrl = `${request.nextUrl.origin}/order?t=${orderToken}`;
-        await sendOrderEmail({
-          to: email,
-          name: customer.first_name ?? "there",
-          orderNum:
-            typeof payload.name === "string" ? payload.name : `#${payload.id}`,
-          total: String(payload.total_price ?? ""),
-          currency: String(payload.currency ?? ""),
-          orderUrl,
+      try {
+        if (email) {
+          const orderToken = signOrder({
+            num: typeof payload.name === "string" ? payload.name : `#${payload.id}`,
+            name: customer.first_name ?? "there",
+            email,
+            total: String(payload.total_price ?? ""),
+            currency: String(payload.currency ?? ""),
+            items: lineItems
+              .slice(0, 6)
+              .map((li) => li.title ?? "")
+              .filter(Boolean),
+            statusUrl:
+              typeof payload.order_status_url === "string"
+                ? payload.order_status_url
+                : "",
+            ts: Date.now(),
+          });
+          const orderUrl = `${request.nextUrl.origin}/order?t=${orderToken}`;
+          await sendOrderEmail({
+            to: email,
+            name: customer.first_name ?? "there",
+            orderNum:
+              typeof payload.name === "string" ? payload.name : `#${payload.id}`,
+            total: String(payload.total_price ?? ""),
+            currency: String(payload.currency ?? ""),
+            orderUrl,
+          });
+        }
+      } catch (err) {
+        log.error("order_email_flow_failed", {
+          orderId: payload.id,
+          message: String(err),
         });
       }
 
       // ── Referral reward: a redeemed slot code earns its holder a
-      //    one-time REWARD_PCT code, delivered by email.
+      //    one-time REWARD_PCT code, delivered by email. The code is
+      //    derived from order id + slot, so a webhook redelivery recreates
+      //    the same code, hits "exists", and no duplicate email goes out.
       const codes = Array.isArray(payload.discount_codes)
         ? (payload.discount_codes as Array<{ code?: string }>)
         : [];
@@ -128,8 +137,10 @@ export async function POST(request: NextRequest) {
           log.warn("referral_referrer_not_found", { slot });
           continue;
         }
-        const rewardCode = `NVYREW-${randomBytes(4)
-          .toString("hex")
+        const rewardCode = `NVYREW-${createHash("sha256")
+          .update(`${payload.id}:${slot}:${process.env.PASS_SIGNING_SECRET ?? ""}`)
+          .digest("hex")
+          .slice(0, 8)
           .toUpperCase()}`;
         const created = await createDiscountCode({
           code: rewardCode,
@@ -137,7 +148,7 @@ export async function POST(request: NextRequest) {
           percent: REWARD_PCT,
           usageLimit: 1,
         });
-        if (created) {
+        if (created === "created") {
           await sendRewardEmail({
             to: referrer.email,
             firstName: referrer.firstName,
@@ -145,6 +156,8 @@ export async function POST(request: NextRequest) {
             percent: REWARD_PCT,
           });
           log.info("referral_rewarded", { slot, rewardCode });
+        } else if (created === "exists") {
+          log.info("referral_reward_duplicate_skipped", { slot, rewardCode });
         }
       }
       break;

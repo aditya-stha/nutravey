@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomInt } from "node:crypto";
 import { SHOPIFY_STORE_DOMAIN } from "@/lib/shopify-config";
 import { getAdminToken, createOrTagCustomer } from "@/lib/shopify-admin";
 import { products } from "@/lib/products";
 import { signPass } from "@/lib/pass";
 import { createDiscountCode, FRIEND_PCT } from "@/lib/referral";
 import { sendPassEmail } from "@/lib/email";
+import { createRateLimiter, clientIp } from "@/lib/rate-limit";
 import { log } from "@/lib/log";
 
 /* ─── Pre-launch reservation endpoint ───────────────────────────────────────
@@ -14,21 +16,8 @@ import { log } from "@/lib/log";
    customers tagged `pre-launch` — the launch-day email list is then just a
    customer segment, no separate database to run. */
 
-const RATE_LIMIT = 5; // submissions per IP…
-const RATE_WINDOW_MS = 10 * 60 * 1000; // …per 10 minutes
-
-/* Per-instance sliding window. Serverless instances don't share it, which is
-   acceptable at this traffic level — Turnstile is the stronger gate. */
-const hits = new Map<string, number[]>();
-
-function rateLimited(ip: string): boolean {
-  const now = Date.now();
-  const recent = (hits.get(ip) ?? []).filter((t) => now - t < RATE_WINDOW_MS);
-  recent.push(now);
-  hits.set(ip, recent);
-  if (hits.size > 10_000) hits.clear(); // crude memory bound
-  return recent.length > RATE_LIMIT;
-}
+// 5 submissions per IP per 10 minutes — Turnstile is the stronger gate.
+const rateLimited = createRateLimiter({ limit: 5, windowMs: 10 * 60 * 1000 });
 
 const VALID_ITEMS = new Set([...products.map((p) => p.id), "bundle"]);
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -93,8 +82,7 @@ async function createShopifyLead(
 }
 
 export async function POST(request: NextRequest) {
-  const ip =
-    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
+  const ip = clientIp(request);
 
   if (rateLimited(ip)) {
     return NextResponse.json(
@@ -150,9 +138,9 @@ export async function POST(request: NextRequest) {
       ? "The Curation Box"
       : (products.find((p) => p.id === item)?.name ?? "Ritual Set");
 
-  const id = `NVY-${item.slice(0, 2).toUpperCase()}-${Math.floor(
-    10000 + Math.random() * 90000,
-  )}`;
+  // CSPRNG over a 9M space — the slot ID doubles as the referral code, so
+  // collisions would silently merge two customers' referral identities.
+  const id = `NVY-${item.slice(0, 2).toUpperCase()}-${randomInt(1_000_000, 10_000_000)}`;
 
   /* Persistence failure is our ops problem, never the customer's: the pass
      still issues and the lead is recoverable from this log line. */

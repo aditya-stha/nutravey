@@ -6,6 +6,17 @@ import { log } from "@/lib/log";
    skipped and logged, and the reserver still gets their pass link in the
    UI. RESEND_FROM must be a sender on a domain verified in Resend. */
 
+/* Reservation names arrive user-controlled and length-checked only — left
+   unescaped they'd let anyone send our-domain-branded HTML to any inbox. */
+function esc(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function sendPassEmail({
   to,
   name,
@@ -34,11 +45,11 @@ export async function sendPassEmail({
         <p style="font-size:10px;letter-spacing:0.2em;color:rgba(255,255,255,0.5);margin:0 0 4px;">RITUAL PASS</p>
         <p style="font-size:18px;font-weight:600;margin:0 0 24px;">NUTRAVEY</p>
         <p style="font-size:10px;letter-spacing:0.12em;color:rgba(255,255,255,0.4);margin:0 0 2px;">ALLOCATED SLATE</p>
-        <p style="font-size:15px;margin:0 0 16px;">${flavor}</p>
+        <p style="font-size:15px;margin:0 0 16px;">${esc(flavor)}</p>
         <p style="font-size:10px;letter-spacing:0.12em;color:rgba(255,255,255,0.4);margin:0 0 2px;">RESERVED FOR</p>
-        <p style="font-size:15px;margin:0 0 16px;">${name}</p>
+        <p style="font-size:15px;margin:0 0 16px;">${esc(name)}</p>
         <p style="font-size:10px;letter-spacing:0.12em;color:rgba(255,255,255,0.4);margin:0 0 2px;">SLOT ID</p>
-        <p style="font-size:14px;letter-spacing:0.2em;margin:0;">${id}</p>
+        <p style="font-size:14px;letter-spacing:0.2em;margin:0;">${esc(id)}</p>
       </div>
       <p style="font-size:13px;line-height:1.7;margin:28px 0;">
         Your slot in the first batch is reserved — no payment until launch.
@@ -104,9 +115,9 @@ export async function sendOrderEmail({
   <div style="margin:0;padding:40px 16px;background:#FAFAFA;font-family:'Courier New',monospace;color:#3D1322;">
     <div style="max-width:480px;margin:0 auto;">
       <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.6;margin:0 0 24px;">Nutravey — Order Confirmed</p>
-      <p style="font-size:22px;font-weight:600;margin:0 0 16px;">The ritual is on its way, ${name}.</p>
+      <p style="font-size:22px;font-weight:600;margin:0 0 16px;">The ritual is on its way, ${esc(name)}.</p>
       <p style="font-size:13px;line-height:1.7;margin:0 0 24px;">
-        Order ${orderNum} — ${total} ${currency} — is confirmed. Your order page
+        Order ${esc(orderNum)} — ${esc(total)} ${esc(currency)} — is confirmed. Your order page
         below has the summary and live tracking as it ships.
       </p>
       <a href="${orderUrl}" style="display:inline-block;background:#3D1322;color:#FAFAFA;padding:14px 28px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;">View your order →</a>
@@ -155,7 +166,7 @@ export async function sendRewardEmail({
   <div style="margin:0;padding:40px 16px;background:#FAFAFA;font-family:'Courier New',monospace;color:#3D1322;">
     <div style="max-width:480px;margin:0 auto;">
       <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.6;margin:0 0 24px;">Nutravey — Referral Reward</p>
-      <p style="font-size:22px;font-weight:600;margin:0 0 16px;">A friend just ordered with your code, ${firstName}.</p>
+      <p style="font-size:22px;font-weight:600;margin:0 0 16px;">A friend just ordered with your code, ${esc(firstName)}.</p>
       <p style="font-size:13px;line-height:1.7;margin:0 0 24px;">
         As promised: ${percent}% off your next order. One use, yours alone.
       </p>

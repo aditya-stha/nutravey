@@ -19,6 +19,10 @@ export default defineConfig({
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
     // Lets the webhook smoke tests sign payloads the server will accept.
-    env: { SHOPIFY_WEBHOOK_SECRET: "smoke-test-webhook-secret" },
+    env: {
+      SHOPIFY_WEBHOOK_SECRET: "smoke-test-webhook-secret",
+      // Token signing fails closed in production builds without a secret.
+      PASS_SIGNING_SECRET: "smoke-test-pass-secret",
+    },
   },
 });

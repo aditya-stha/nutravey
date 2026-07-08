@@ -14,7 +14,6 @@ export const metadata: Metadata = {
   robots: { index: false },
 };
 
-// Session cookie decides what renders — always per-request.
 export const dynamic = "force-dynamic";
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -40,6 +39,27 @@ const h1Style = {
   color: "var(--color-ink)",
   marginBottom: "24px",
 };
+
+function getStatusLabel(fulfillmentStatus?: string): string {
+  switch ((fulfillmentStatus ?? "").toUpperCase()) {
+    case "FULFILLED":       return "Delivered";
+    case "PARTIALLY_FULFILLED": return "Partially shipped";
+    case "IN_PROGRESS":    return "Out for delivery";
+    case "ON_HOLD":        return "On hold";
+    case "SCHEDULED":      return "Scheduled";
+    case "UNFULFILLED":
+    default:               return "Preparing";
+  }
+}
+
+function getStatusColor(label: string): string {
+  switch (label) {
+    case "Delivered":         return "var(--color-ink)";
+    case "Out for delivery":  return "var(--color-ink)";
+    case "Partially shipped": return "var(--color-ink-muted)";
+    default:                  return "var(--color-ink-faint)";
+  }
+}
 
 export default async function AccountPage() {
   if (!customerAccountsEnabled) {
@@ -88,8 +108,7 @@ export default async function AccountPage() {
           }}
         >
           Orders, delivery status, and requests live here — sign in or create
-          your account. Everything stays on this page; nothing leaves the
-          site.
+          your account. Everything stays on this page; nothing leaves the site.
         </p>
         <AuthForms />
       </Shell>
@@ -116,6 +135,7 @@ export default async function AccountPage() {
       >
         Orders
       </p>
+
       {customer.orders.length === 0 ? (
         <p
           className="mono-body"
@@ -134,10 +154,9 @@ export default async function AccountPage() {
           }}
         >
           {customer.orders.map((o) => {
-            const status = (o.fulfillmentStatus ?? "").toUpperCase();
-            const shipped = ["SUCCESS", "FULFILLED", "DELIVERED"].some((s) =>
-              status.includes(s),
-            );
+            const statusLabel = getStatusLabel(o.fulfillmentStatus);
+            const statusColor = getStatusColor(statusLabel);
+
             return (
               <li
                 key={o.name}
@@ -163,13 +182,13 @@ export default async function AccountPage() {
                     className="mono-label"
                     style={{
                       fontSize: "10px",
-                      color: shipped ? "var(--color-ink)" : "var(--color-ink-faint)",
+                      color: statusColor,
                       border: "0.4px solid var(--color-rule)",
                       borderRadius: "var(--radius-chip)",
                       padding: "3px 10px",
                     }}
                   >
-                    {shipped ? "Out for delivery" : "Preparing"}
+                    {statusLabel}
                   </span>
                   <span
                     className="mono-body"
@@ -195,12 +214,32 @@ export default async function AccountPage() {
                   </p>
                 )}
 
+                {o.statusUrl && (
+                  <p style={{ marginBottom: "10px" }}>
+                    <a
+                      href={o.statusUrl}
+                      className="mono-cta"
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--color-ink)",
+                        textDecoration: "underline",
+                      }}
+                    >
+                      View order status & tracking →
+                    </a>
+                  </p>
+                )}
+
                 {o.tracking?.url && (
                   <p style={{ marginBottom: "10px" }}>
                     <a
                       href={o.tracking.url}
                       className="mono-cta"
-                      style={{ fontSize: "11px", color: "var(--color-ink)", textDecoration: "underline" }}
+                      style={{
+                        fontSize: "11px",
+                        color: "var(--color-ink)",
+                        textDecoration: "underline",
+                      }}
                     >
                       Track shipment{o.tracking.number ? ` · ${o.tracking.number}` : ""} →
                     </a>

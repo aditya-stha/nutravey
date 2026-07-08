@@ -195,7 +195,7 @@ test("referral link sets the cookie and forwards to the shop", async ({
 test("order page verifies signed tokens and rejects forgeries", async ({
   page,
 }) => {
-  // Signed with the dev fallback secret the test server also uses.
+  // Signed with the secret injected into the test server (see playwright.config).
   const { createHmac: hmac } = await import("node:crypto");
   const payload = Buffer.from(
     JSON.stringify({
@@ -209,7 +209,7 @@ test("order page verifies signed tokens and rejects forgeries", async ({
       ts: Date.now(),
     }),
   );
-  const sig = hmac("sha256", "nutravey-dev-pass-secret")
+  const sig = hmac("sha256", "smoke-test-pass-secret")
     .update(payload)
     .digest();
   const token = `${payload.toString("base64url")}.${sig.toString("base64url")}`;

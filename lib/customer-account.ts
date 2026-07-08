@@ -24,6 +24,8 @@ export interface CustomerOrder {
   currency: string;
   items: string[];
   tracking?: { number?: string; url?: string };
+  /** Shopify's live order-status page (fulfillment, tracking). */
+  statusUrl?: string;
 }
 
 export interface CustomerSummary {
@@ -146,6 +148,7 @@ const CUSTOMER_QUERY = /* GraphQL */ `
           processedAt
           financialStatus
           fulfillmentStatus
+          statusUrl
           totalPrice { amount currencyCode }
           lineItems(first: 10) {
             nodes {
@@ -173,6 +176,7 @@ interface CustomerResponse {
         processedAt: string;
         financialStatus?: string;
         fulfillmentStatus?: string;
+        statusUrl?: string;
         totalPrice: { amount: string; currencyCode: string };
         lineItems: {
           nodes: Array<{ title: string; variant: { title: string } | null }>;
@@ -211,6 +215,7 @@ export async function getCustomer(): Promise<CustomerSummary | null> {
           processedAt: o.processedAt,
           financialStatus: o.financialStatus,
           fulfillmentStatus: o.fulfillmentStatus,
+          statusUrl: o.statusUrl,
           total: o.totalPrice.amount,
           currency: o.totalPrice.currencyCode,
           items: o.lineItems.nodes

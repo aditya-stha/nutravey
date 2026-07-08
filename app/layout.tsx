@@ -56,7 +56,9 @@ function GoogleAnalytics() {
 
 // Runs synchronously before body content paints, so the correct CSS vars
 // are in effect before the first frame — no light-flash on dark loads.
-const themeInitScript = `(function(){try{var t=localStorage.getItem('nutravey-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
+// Also stamps data-splash so CSS can hide the splash overlay instantly on
+// repeat views this session (the brand moment plays once, not per load).
+const themeInitScript = `(function(){try{var t=localStorage.getItem('nutravey-theme');if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}document.documentElement.dataset.theme=t;}catch(e){document.documentElement.dataset.theme='light';}try{if(sessionStorage.getItem('nvy-splash-seen')){document.documentElement.dataset.splash='seen';}else{sessionStorage.setItem('nvy-splash-seen','1');}}catch(e){}})();`;
 
 export default function RootLayout({
   children,

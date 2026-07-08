@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -18,7 +19,7 @@ interface RitualCard {
 
 const cards: RitualCard[] = [
   {
-    src: "/images/archetypes/athlete.jpg",
+    src: "/images/archetypes/athlete.webp",
     alt: "Athlete in early-morning training",
     label: "MORNING",
     title: "THE MORNING LIFT",
@@ -29,7 +30,7 @@ const cards: RitualCard[] = [
     z: 8,
   },
   {
-    src: "/images/archetypes/musician.jpg",
+    src: "/images/archetypes/musician.webp",
     alt: "Musician under stage lighting",
     label: "LATE NIGHT",
     title: "THE LATE-NIGHT SET",
@@ -40,7 +41,7 @@ const cards: RitualCard[] = [
     z: 9,
   },
   {
-    src: "/images/archetypes/coder.jpg",
+    src: "/images/archetypes/coder.webp",
     alt: "Developer in long-focus session",
     label: "LONG FOCUS",
     title: "THE LONG FOCUS",
@@ -51,7 +52,7 @@ const cards: RitualCard[] = [
     z: 10,
   },
   {
-    src: "/images/archetypes/artist.jpg",
+    src: "/images/archetypes/artist.webp",
     alt: "Artist at the workbench",
     label: "THE CRAFT",
     title: "THE CONSIDERED CRAFT",
@@ -62,7 +63,7 @@ const cards: RitualCard[] = [
     z: 9,
   },
   {
-    src: "/images/archetypes/executive.jpg",
+    src: "/images/archetypes/executive.webp",
     alt: "Executive making early decisions",
     label: "DECISIONS",
     title: "THE BIG DECISIONS",
@@ -77,11 +78,20 @@ const cards: RitualCard[] = [
 export default function BrandIdentity() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const reduce = useReducedMotion();
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const triggerRef = useRef<HTMLButtonElement | null>(null);
 
   useEffect(() => {
     if (openIndex === null) return;
+    // The close button is the dialog's only focusable element, so focusing
+    // it on open and pinning Tab to it is a complete focus trap.
+    closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpenIndex(null);
+      if (e.key === "Tab") {
+        e.preventDefault();
+        closeRef.current?.focus();
+      }
     };
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -89,6 +99,7 @@ export default function BrandIdentity() {
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("keydown", onKey);
+      triggerRef.current?.focus(); // hand focus back to the opening card
     };
   }, [openIndex]);
 
@@ -110,11 +121,13 @@ export default function BrandIdentity() {
                 "--card-r": c.rotate,
                 zIndex: c.z,
               } as CSSProperties}
-              onClick={() => setOpenIndex(i)}
+              onClick={(e) => {
+                triggerRef.current = e.currentTarget;
+                setOpenIndex(i);
+              }}
               aria-label={`Open ${c.title}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={c.src} alt={c.alt} />
+              <Image src={c.src} alt={c.alt} width={480} height={600} sizes="240px" />
               <span className="rcard-label">{c.label}</span>
             </button>
           ))}
@@ -158,14 +171,21 @@ export default function BrandIdentity() {
               transition={{ duration: 0.3, ease: "easeOut" }}
               onClick={(e) => e.stopPropagation()}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={active.src} alt={active.alt} className="ritual-image" />
+              <Image
+                src={active.src}
+                alt={active.alt}
+                width={1200}
+                height={1500}
+                sizes="(max-width: 648px) 100vw, 600px"
+                className="ritual-image"
+              />
               <div className="ritual-meta">
                 <h3 className="ritual-title">{active.title}</h3>
                 <p className="ritual-desc">{active.description}</p>
               </div>
               <button
                 type="button"
+                ref={closeRef}
                 className="ritual-close"
                 onClick={() => setOpenIndex(null)}
                 aria-label="Close"
@@ -269,7 +289,7 @@ export default function BrandIdentity() {
         }
 
         .rituals-tag {
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 12px;
           letter-spacing: 0.2em;
           text-transform: uppercase;
@@ -289,7 +309,7 @@ export default function BrandIdentity() {
         }
 
         .rituals-body {
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 15px;
           color: color-mix(in srgb, var(--color-ink) 65%, transparent);
           max-width: 480px;
@@ -299,7 +319,7 @@ export default function BrandIdentity() {
 
         .rituals-cta {
           display: inline-block;
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 13px;
           letter-spacing: 0.15em;
           text-transform: uppercase;
@@ -387,7 +407,7 @@ export default function BrandIdentity() {
         }
 
         .ritual-desc {
-          font-family: 'Space Mono', 'IBM Plex Mono', monospace;
+          font-family: var(--font-mono);
           font-size: 14px;
           color: rgba(245, 235, 224, 0.6);
           margin: 0;
