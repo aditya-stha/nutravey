@@ -3,7 +3,7 @@ import {
   customerAccountsEnabled,
   getCustomer,
 } from "@/lib/customer-account";
-import { isPreLaunch } from "@/lib/shopify-config";
+import { getPreLaunch } from "@/lib/pre-launch-server";
 import AuthForms from "@/components/account/AuthForms";
 import SignOut from "@/components/account/SignOut";
 import OrderActions from "@/components/account/OrderActions";
@@ -62,6 +62,7 @@ function getStatusColor(label: string): string {
 }
 
 export default async function AccountPage() {
+  const isPreLaunch = await getPreLaunch();
   if (!customerAccountsEnabled) {
     return (
       <Shell>

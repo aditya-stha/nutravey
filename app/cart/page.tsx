@@ -15,7 +15,8 @@ import type {
   ComponentizableCartLine,
   ProductVariant,
 } from "@shopify/hydrogen-react/storefront-api-types";
-import { isShopifyConfigured, isPreLaunch } from "@/lib/shopify-config";
+import { isShopifyConfigured } from "@/lib/shopify-config";
+import { usePreLaunch } from "@/components/providers/PreLaunchProvider";
 import { track } from "@/lib/analytics";
 
 type Line = CartLine | ComponentizableCartLine;
@@ -23,6 +24,7 @@ type Line = CartLine | ComponentizableCartLine;
 
 
 export default function CartPage() {
+  const isPreLaunch = usePreLaunch();
   const {
     lines,
     cost,

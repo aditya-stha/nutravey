@@ -7,6 +7,8 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import SplashScreen from "@/components/SplashScreen";
 import ShopProviders from "@/components/providers/ShopProviders";
+import { PreLaunchProvider } from "@/components/providers/PreLaunchProvider";
+import ModeToggle from "@/components/ModeToggle";
 
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
@@ -65,6 +67,10 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Show the mode toggle in local dev and on any deployment still behind the
+  // dev gate. It disappears at public launch (gate removed, production build).
+  const showModeToggle =
+    process.env.NODE_ENV !== "production" || Boolean(process.env.DEV_GATE_PASSWORD);
   return (
     <html
       lang="en"
@@ -75,9 +81,12 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
         <SplashScreen />
         <ShopProviders>
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
+          <PreLaunchProvider>
+            <Header />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            {showModeToggle && <ModeToggle />}
+          </PreLaunchProvider>
         </ShopProviders>
         <Analytics />
         <GoogleAnalytics />

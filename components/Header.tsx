@@ -1,9 +1,11 @@
+"use client";
+
 import Link from "next/link";
 import Logo from "@/components/Logo";
 import ThemeToggle from "@/components/ThemeToggle";
 import MobileMenu from "@/components/MobileMenu";
 import CartLink from "@/components/cart/CartLink";
-import { isPreLaunch } from "@/lib/shopify-config";
+import { usePreLaunch } from "@/components/providers/PreLaunchProvider";
 
 const navLinks = [
   { label: "Shop", href: "/shop" },
@@ -12,13 +14,15 @@ const navLinks = [
   { label: "Standards", href: "/standards" },
 ];
 
-/* Commerce entries join the nav in live mode only — during pre-launch the
-   cart is offline and accounts are a stub, so linking them is a dead end. */
-const commerceLinks = isPreLaunch
-  ? []
-  : [{ label: "Account", href: "/account" }];
-
 export default function Header() {
+  const isPreLaunch = usePreLaunch();
+
+  /* Commerce entries join the nav in live mode only — during pre-launch the
+     cart is offline and accounts are a stub, so linking them is a dead end. */
+  const commerceLinks = isPreLaunch
+    ? []
+    : [{ label: "Account", href: "/account" }];
+
   return (
     <header
       className="site-header"

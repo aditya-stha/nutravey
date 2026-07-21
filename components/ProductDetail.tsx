@@ -13,7 +13,8 @@ import IngredientGrid from "@/components/IngredientGrid";
 import Reviews from "@/components/Reviews";
 import type { Review } from "@/lib/reviews";
 import HoloTicket from "@/components/HoloTicket";
-import { isPreLaunch, isShopifyConfigured } from "@/lib/shopify-config";
+import { isShopifyConfigured } from "@/lib/shopify-config";
+import { usePreLaunch } from "@/components/providers/PreLaunchProvider";
 import { track } from "@/lib/analytics";
 
 interface ProductDetailProps {
@@ -40,6 +41,7 @@ export default function ProductDetail({
   subscriptionPlans = [],
   reviews = [],
 }: ProductDetailProps) {
+  const isPreLaunch = usePreLaunch();
   const reduce = useReducedMotion();
   const [qty, setQty] = useState(1);
   // null = one-time purchase; otherwise the selected selling plan GID.

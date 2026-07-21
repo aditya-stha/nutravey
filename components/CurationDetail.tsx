@@ -7,7 +7,8 @@ import { motion, useReducedMotion } from "framer-motion";
 import { useRouter } from "next/navigation";
 import { useCart } from "@shopify/hydrogen-react";
 import { products, curation } from "@/lib/products";
-import { isPreLaunch, isShopifyConfigured } from "@/lib/shopify-config";
+import { isShopifyConfigured } from "@/lib/shopify-config";
+import { usePreLaunch } from "@/components/providers/PreLaunchProvider";
 import { track } from "@/lib/analytics";
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
@@ -23,6 +24,7 @@ export default function CurationDetail({
   variantIds = [],
   available = false,
 }: CurationDetailProps) {
+  const isPreLaunch = usePreLaunch();
   const reduce = useReducedMotion();
   const [qty, setQty] = useState(1);
 
