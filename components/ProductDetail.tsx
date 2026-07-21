@@ -601,7 +601,7 @@ export default function ProductDetail({
       {/* ── Ingredients + Usage ──────────────────────────────────────── */}
       <section style={{ backgroundColor: "var(--color-surface)" }}>
         <div
-          className="content-rail pdp-two-col"
+          className="content-rail pdp-usage-grid"
           style={{
             paddingTop: "clamp(56px, 9vw, 96px)",
             paddingBottom: "clamp(56px, 9vw, 96px)",
@@ -720,6 +720,27 @@ export default function ProductDetail({
               ))}
             </ol>
           </div>
+
+          {/* Spotlight — the single sachet, isolated, glowing on hover. */}
+          <motion.div
+            className="pdp-sachet-spotlight canvas-hover"
+            style={{ "--flavor": product.accent } as CSSProperties}
+            initial={reduce ? false : { opacity: 0, y: 16 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-80px" }}
+            transition={{ duration: 0.7, ease: EASE }}
+          >
+            <div className="canvas-glow" aria-hidden="true" />
+            <div className="pdp-sachet-img">
+              <Image
+                src={product.sachetImage}
+                alt={`${product.name} single sachet`}
+                fill
+                sizes="(max-width: 900px) 55vw, 280px"
+                style={{ objectFit: "contain" }}
+              />
+            </div>
+          </motion.div>
         </div>
         <hr />
       </section>
@@ -1192,18 +1213,66 @@ export default function ProductDetail({
           max-width: 360px;
         }
 
-        /* ── Two-column (ingredients + usage) ──────────────────────────── */
-        .pdp-two-col {
+        /* ── Ingredients · Usage · Sachet spotlight ────────────────────── */
+        .pdp-usage-grid {
           display: grid;
           grid-template-columns: 1fr;
           gap: 64px;
         }
         @media (min-width: 768px) {
-          .pdp-two-col {
+          .pdp-usage-grid {
             grid-template-columns: 1fr 1fr;
-            gap: 96px;
+            gap: 72px;
             align-items: start;
           }
+        }
+        @media (min-width: 1000px) {
+          .pdp-usage-grid {
+            grid-template-columns: 1fr 1fr minmax(150px, 200px);
+          }
+        }
+
+        /* The isolated sachet — no clip, transparent PNG, flavour glow riding
+           the shared .canvas-glow on hover. The packet's extreme aspect means
+           we size it by HEIGHT (to sit near the text block, not tower over it)
+           and let width follow. Spans the ingredients+usage row on the tablet
+           breakpoint before it earns its own column. */
+        .pdp-sachet-spotlight {
+          position: relative;
+          display: flex;
+          justify-content: center;
+          align-items: flex-start;
+        }
+        @media (min-width: 768px) and (max-width: 999.98px) {
+          .pdp-sachet-spotlight {
+            grid-column: 1 / -1;
+            margin-top: 8px;
+          }
+        }
+        .pdp-sachet-img {
+          position: relative;
+          height: 360px;
+          aspect-ratio: 764 / 2321;
+          max-width: 100%;
+        }
+        @media (min-width: 1000px) {
+          .pdp-sachet-img { height: 400px; }
+        }
+
+        /* Resting ambient glow — the sachet is always softly lit by its own
+           flavour, so it looks intentionally placed rather than dropped in.
+           Hover lifts it the rest of the way (shared .canvas-hover spec). The
+           scoped rules keep this override off every other product canvas. */
+        .pdp-sachet-spotlight .canvas-glow {
+          opacity: 0.34;
+          transform: scale(0.96);
+        }
+        .pdp-sachet-spotlight:hover .canvas-glow {
+          opacity: 0.95;
+          transform: scale(1.28);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .pdp-sachet-spotlight:hover .canvas-glow { transform: scale(0.96); }
         }
 
         /* ── Supplement facts table ───────────────────────────────────── */

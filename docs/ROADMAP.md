@@ -64,29 +64,36 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 
 - [x] Shopify store connected: Electrolytes Powder Mix (3 variants, $42,
       USD) + Headless channel public token; live add-to-cart verified
-- [ ] Automatic discount "The Curation — Save $18" ($6 off each of the 3
-      variants, min qty 3) — the bundle page promises it at checkout
-- [ ] Subscribe & Save: install the free "Shopify Subscriptions" app and
-      create a selling plan group on the Electrolytes product — the PDP
-      selector appears automatically
-- [ ] Bogus Gateway test order (card `1` at checkout) — verify order lands
-      in admin
+- [x] Automatic discount "The Curation — Save $18" ($6 off each of the 3
+      variants, min qty 3) — live-verified ACTIVE 2026-07-21, matches the
+      bundle page's checkout promise exactly
+- [x] Subscribe & Save: "Shopify Subscriptions" app installed, "Ritual
+      Subscription" selling plan group created on the Electrolytes product
+      (live-verified 2026-07-21 via Admin API — covers all 3 flavour
+      variants since they're one product) — PDP selector should now appear
+      automatically
+- [x] Bogus Gateway test order — active; order chain verified through the
+      confirmation email (2026-07-15)
 - [x] Vercel deploy — live at nutravey.vercel.app (nutravey.com DNS split
       still pending: root → Vercel, shop.nutravey.com → Shopify primary)
 - [ ] Vercel env vars — audit against .env.local.example; **PASS_SIGNING_SECRET
       is now HARD-REQUIRED in production** (token signing fails closed:
       reservations 500 without it)
-- [ ] Dev Dashboard app scopes: grant read/write_customers,
-      read/write_orders, read/write_discounts (metaobjects already work),
-      then RE-RELEASE/reinstall the app — waitlist tagging, referral codes,
-      reward lookups, and order stamping stay dormant until then
-- [ ] Webhook subscription (orders/create, products/update →
-      https://<domain>/api/webhooks/shopify) + SHOPIFY_WEBHOOK_SECRET —
-      needs the deployed URL, so after first deploy
-- [ ] SHOPIFY_ADMIN_CLIENT_SECRET (Dev Dashboard app) — waitlist leads →
-      tagged customers (leads only logged until then)
+- [x] Dev Dashboard app scopes: granted and live-verified 2026-07-21 —
+      root cause was that releasing a new app version doesn't push scopes
+      to an already-installed app; reinstalling via the Installs tab did.
+      orders/discounts/customers/sellingPlanGroups queries all resolve now
+      (note: the reinstall granted the full scope tree, broader than the
+      6 actually used — worth trimming later for least privilege). Waitlist
+      tagging, referral codes, reward lookups, order stamping, and live
+      order tracking are unblocked.
+- [x] Webhook subscription + SHOPIFY_WEBHOOK_SECRET — live (admin-created,
+      so invisible to the app's webhookSubscriptions query; proven by the
+      confirmation email firing on Bogus test orders)
+- [x] SHOPIFY_ADMIN_CLIENT_SECRET (Dev Dashboard app) — set
 - [ ] PASS_SIGNING_SECRET (openssl rand -hex 32) — REQUIRED in production
-- [ ] Resend account + verified domain (reservation emails)
+- [x] Resend account + verified domain — delivering (order confirmation
+      emails confirmed working 2026-07-15)
 - [ ] Real NEXT_PUBLIC_LAUNCH_DATE
 - [ ] Decide: honor 15% VIP discount copy (promised on the reservation
       form + pass page); create the launch discount for the pre-launch
@@ -99,6 +106,30 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
 - [x] Customer accounts (Customer Account API, env-gated): PKCE sign-in,
       /account order history — register /account/callback as callback URI
       and set NEXT_PUBLIC_SHOPIFY_CUSTOMER_CLIENT_ID to activate
+
+## Visual session (2026-07-22)
+
+Shipped:
+- [x] Sachet product renders integrated — cleaned transparent cutouts
+      (strawberry/lychee/lemon, dark edge-halo removed) under
+      /images/sachets/*-cutout.png, wired via `sachetImage` in lib/products.ts
+- [x] PDP sachet spotlight — the single sachet shown large (height-matched to
+      the usage text block, not towering) beside "One sachet, one moment.";
+      always-on ambient flavour glow + brighter hover glow (scoped canvas-glow,
+      no drop-shadow per brand rule)
+- [x] Active-formulation infographic (IngredientGrid) rebuilt from scratch to
+      the approved V2 spec — exact tile sizes, deep-plum panel (#321027),
+      two-colour scheme (plum + gradient-swirl tiles, per-tile randomized
+      swirl), JetBrains Mono symbols, tooltip clipping fixed (swirl clipped in
+      an inner layer so the tile stays overflow-visible for the tooltip)
+
+Remaining (visual):
+- [ ] Infographic mobile treatment — desktop-first only right now; a narrow
+      viewport scrolls the 900px card horizontally rather than reflowing
+- [ ] Sachet spotlight is on the flavour PDPs only — not yet on /shop or the
+      curation/bundle page
+- [ ] Broader design items still open above in §1 (real photography,
+      flavour-world art direction, one signature interactive moment per page)
 
 ## Infrastructure notes (2026-07-08 session)
 
@@ -113,8 +144,12 @@ Legend: `[x]` shipped · `[ ]` to build · `(you)` = founder-side, not code.
       referral reward codes
 - [x] Splash plays once per session; asset tree consolidated under
       /images as webp
-- [ ] Shopify notification templates: customer-welcome Liquid customized
-      (reference/notifications) — hardcodes nutravey.vercel.app, update
-      site_url when nutravey.com lands; port remaining templates
+- [ ] Shopify notification templates (reference/notifications): welcome +
+      password-reset Liquid customized, site_url now www.nutravey.com —
+      paste both into Shopify Admin → Settings → Notifications (the reset
+      one routes recovery through our /account/reset page); port remaining
+      templates. NOTE: store must stay on LEGACY customer accounts — new
+      customer accounts hijack the reset link into Shopify's passwordless
+      hosted flow (this was the 2026-07-16 reset bug)
 - [ ] JetBrains Mono woff2 staged in /public/fonts — self-hosting swap
       (drop the Google Fonts dependency) not wired yet

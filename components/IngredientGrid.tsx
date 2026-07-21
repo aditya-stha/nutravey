@@ -1,47 +1,68 @@
 "use client";
 
+import type { CSSProperties } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 
-/* ─── Active formulation — 12 ingredient cells ─────────────────────────
-   Universal across products. Two rows: 4 boxes on top, a pill cluster
-   + 3 boxes on the bottom. Pixel widths are tuned so each row sums to
-   the inner content width (900 - 20 padding - 18 gap = 862 + 18 = 880). */
+/* ─── Active formulation — V2 treemap infographic ──────────────────────
+   Exact tile sizes come from the approved spec. Two colours only: a deep-
+   plum panel, and gradient-swirl fills in every tile (no category tints).
+
+   Each tile is overflow:visible so its tooltip can escape; the swirling
+   gradient lives in an inner .ig-glow layer that clips it instead. The
+   scroll wrapper carries top padding so top-row tooltips have room to
+   rise into. Desktop-first; a narrow viewport scrolls horizontally. */
 
 const EASE = [0.22, 1, 0.36, 1] as [number, number, number, number];
 
-const rowOne = [
-  { sym: "Vit-C", amt: "152mg", width: 130, kind: "vitamin", tip: "Supports immune defense & collagen synthesis" },
-  { sym: "Na",    amt: "290mg", width: 200, kind: "mineral", tip: "Maintains fluid balance during exertion" },
-  { sym: "Cl",    amt: "340mg", width: 232, kind: "mineral", tip: "Regulates hydration at cellular level" },
-  { sym: "Taurine", amt: "500mg", width: 300, kind: "amino", tip: "Enhances endurance & reduces muscle fatigue" },
-] as const;
+/* Per-tile swirl timing so no two glows move in lockstep. */
+const SWIRL_DUR = [13, 17, 15, 19, 14, 21, 16, 18, 20, 12, 22, 15] as const;
+function swirl(i: number): CSSProperties {
+  return {
+    ["--dur" as string]: `${SWIRL_DUR[i % SWIRL_DUR.length]}s`,
+    ["--delay" as string]: `-${((i * 2.7) % 11).toFixed(1)}s`,
+    ["--dir" as string]: i % 2 ? "reverse" : "normal",
+  };
+}
 
-const rowTwoBoxes: ReadonlyArray<{
+interface Box {
+  w: string;
   sym: string;
   amt: string;
-  width: number;
-  kind: "vitamin" | "mineral" | "amino";
   tip: string;
-  large?: boolean;
-}> = [
-  { sym: "Mg", amt: "76mg", width: 174, kind: "mineral", tip: "Prevents cramps & supports muscle function" },
-  { sym: "K",  amt: "302mg", width: 232, kind: "mineral", tip: "Essential for heart rhythm & hydration" },
-  { sym: "Glycine", amt: "1g", width: 326, kind: "amino", tip: "Promotes deep sleep & joint repair", large: true },
+  big?: boolean;
+}
+
+const rowTop: Box[] = [
+  { w: "w-vitc", sym: "Vit-C", amt: "150mg", tip: "Supports immune defense & collagen synthesis" },
+  { w: "w-na",   sym: "Na",    amt: "100mg", tip: "Maintains fluid balance during exertion" },
+  { w: "w-cl",   sym: "Cl",    amt: "631mg", tip: "Regulates hydration at cellular level" },
+  { w: "w-tau",  sym: "Tau",   amt: "500mg", tip: "Enhances endurance & reduces muscle fatigue" },
 ];
 
-const clusterLeftCol = [
-  { sym: "Zn",  kind: "mineral", tip: "Speeds recovery & supports immunity" },
-  { sym: "B5",  kind: "vitamin", tip: "Converts food into sustained energy" },
-  { sym: "B12", kind: "vitamin", tip: "Sharpens focus & nerve function" },
-] as const;
+const rowBottom: Box[] = [
+  { w: "w-ca",  sym: "Ca",  amt: "150mg", tip: "Supports bone strength & muscle contraction" },
+  { w: "w-mg",  sym: "Mg",  amt: "47mg",  tip: "Prevents cramps & supports muscle function" },
+  { w: "w-k",   sym: "K",   amt: "525mg", tip: "Essential for heart rhythm & hydration" },
+  { w: "w-gly", sym: "Gly", amt: "1g",    tip: "Promotes deep sleep & joint repair", big: true },
+];
 
-const clusterRightCol = [
-  { sym: "B3", kind: "vitamin", tip: "Supports metabolic efficiency" },
-  { sym: "B6", kind: "vitamin", tip: "Aids amino acid metabolism" },
-] as const;
+const pillRows: { cls: string; pills: { sym: string; tip: string; tiny?: boolean }[] }[] = [
+  { cls: "pill-row-lg", pills: [
+    { sym: "B5", tip: "Converts food into sustained energy" },
+    { sym: "B3", tip: "Supports metabolic efficiency" },
+  ] },
+  { cls: "pill-row-md", pills: [
+    { sym: "Zn", tip: "Speeds recovery & supports immunity" },
+    { sym: "B6", tip: "Aids amino acid metabolism" },
+  ] },
+  { cls: "pill-row-sm", pills: [
+    { sym: "B12", tip: "Sharpens focus & nerve function", tiny: true },
+  ] },
+];
 
 export default function IngredientGrid() {
   const reduce = !!useReducedMotion();
+  let n = 0; // running index feeding swirl() so every tile differs
 
   return (
     <section className="ig-section">
@@ -82,60 +103,51 @@ export default function IngredientGrid() {
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 1.0, delay: 0.22, ease: EASE }}
         >
-          <div className="ig-outer">
-            <div className="ig-row" style={{ height: 210 }}>
-              {rowOne.map((c) => (
+          <div className="outer">
+            <div className="row row-top">
+              {rowTop.map((b) => (
                 <div
-                  key={c.sym}
-                  className={`ig-box ig-${c.kind}`}
-                  style={{ flex: c.width }}
-                  data-tooltip={c.tip}
+                  key={b.sym}
+                  className={`box ${b.w}`}
+                  style={swirl(n++)}
+                  data-tooltip={b.tip}
                 >
-                  <span className="ig-sym">{c.sym}</span>
-                  <span className="ig-amt">{c.amt}</span>
+                  <span className="ig-glow" aria-hidden="true" />
+                  <span className="sym">{b.sym}</span>
+                  <span className="amt">{b.amt}</span>
                 </div>
               ))}
             </div>
 
-            <div className="ig-row" style={{ height: 190 }}>
-              <div className="ig-cluster" style={{ flex: 130 }}>
-                <div className="ig-cluster-col" style={{ flex: 78 }}>
-                  {clusterLeftCol.map((p) => (
-                    <div
-                      key={p.sym}
-                      className={`ig-pill ig-${p.kind}`}
-                      data-tooltip={p.tip}
-                    >
-                      {p.sym}
-                    </div>
-                  ))}
-                </div>
-                <div
-                  className="ig-cluster-col ig-cluster-col--small"
-                  style={{ flex: 48 }}
-                >
-                  {clusterRightCol.map((p) => (
-                    <div
-                      key={p.sym}
-                      className={`ig-pill ig-pill--small ig-${p.kind}`}
-                      data-tooltip={p.tip}
-                    >
-                      {p.sym}
-                    </div>
-                  ))}
-                </div>
+            <div className="row row-bottom">
+              <div className="cluster">
+                {pillRows.map((pr) => (
+                  <div key={pr.cls} className={`pill-row ${pr.cls}`}>
+                    {pr.pills.map((p) => (
+                      <div
+                        key={p.sym}
+                        className={`pill${p.tiny ? " pill-tiny" : ""}`}
+                        style={swirl(n++)}
+                        data-tooltip={p.tip}
+                      >
+                        <span className="ig-glow" aria-hidden="true" />
+                        <span className="pill-label">{p.sym}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
-              {rowTwoBoxes.map((c) => (
+
+              {rowBottom.map((b) => (
                 <div
-                  key={c.sym}
-                  className={`ig-box ig-${c.kind}`}
-                  style={{ flex: c.width }}
-                  data-tooltip={c.tip}
+                  key={b.sym}
+                  className={`box ${b.w}`}
+                  style={swirl(n++)}
+                  data-tooltip={b.tip}
                 >
-                  <span className={`ig-sym${c.large ? " ig-sym--large" : ""}`}>
-                    {c.sym}
-                  </span>
-                  <span className="ig-amt">{c.amt}</span>
+                  <span className="ig-glow" aria-hidden="true" />
+                  <span className={`sym${b.big ? " sym-big" : ""}`}>{b.sym}</span>
+                  <span className="amt">{b.amt}</span>
                 </div>
               ))}
             </div>
@@ -152,7 +164,6 @@ export default function IngredientGrid() {
         @media (min-width: 1024px) {
           .ig-section { padding: 120px 0 140px; }
         }
-
         .ig-rail {
           max-width: 1600px;
           margin: 0 auto;
@@ -191,39 +202,34 @@ export default function IngredientGrid() {
           margin: 0 0 56px;
         }
 
-        /* ── Grid container ──────────────────────────────────────── */
+        /* ── Scroll wrapper — top padding gives tooltips room to rise ─ */
         .ig-scroll {
           width: 100%;
           overflow-x: auto;
-          overflow-y: visible;
-          padding: 56px 0 16px;
+          padding: 64px 0 24px;
           -webkit-overflow-scrolling: touch;
         }
 
-        .ig-outer {
-          width: 100%;
-          max-width: 1500px;
-          height: 426px;
+        /* ── Exact spec sizes ──────────────────────────────────────── */
+        .outer {
+          width: 900px;
+          height: 342px;
           margin: 0 auto;
-          background: color-mix(in srgb, var(--color-ink) 4%, transparent);
-          border: 1px solid color-mix(in srgb, var(--color-ink) 35%, transparent);
+          background: #321027;
+          border: 1px solid #1A0714;
           border-radius: 28px;
           padding: 10px;
           box-sizing: border-box;
           display: flex;
           flex-direction: column;
           gap: 6px;
-          font-family: var(--font-inter), 'Inter', system-ui, -apple-system, sans-serif;
-          overflow: visible;
         }
-        .ig-outer * { box-sizing: border-box; }
+        .outer * { box-sizing: border-box; }
+        .row { display: flex; gap: 6px; }
+        .row-top { height: 166px; }
+        .row-bottom { height: 150px; }
 
-        .ig-row {
-          display: flex;
-          gap: 6px;
-        }
-
-        .ig-box {
+        .box {
           border-radius: 16px;
           display: flex;
           flex-direction: column;
@@ -231,108 +237,143 @@ export default function IngredientGrid() {
           justify-content: center;
           text-align: center;
           position: relative;
+          overflow: visible;               /* let the tooltip escape */
           cursor: default;
-          transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+          background: #26091C;
+          border: 1px solid #150610;
+          transition: transform 0.2s ease, border-color 0.2s ease;
         }
-
-        .ig-sym {
+        .sym {
+          position: relative;
+          z-index: 1;
+          font-family: var(--font-mono);
           font-size: 28px;
-          font-weight: 500;
+          font-weight: 700;
           line-height: 1;
-          color: rgba(255, 255, 255, 0.9);
+          color: rgba(255, 255, 255, 0.96);
         }
-        .ig-sym--large { font-size: 34px; }
-        .ig-amt {
+        .sym-big { font-size: 32px; }
+        .amt {
+          position: relative;
+          z-index: 1;
+          font-family: var(--font-mono);
           font-size: 13px;
-          font-weight: 400;
-          color: rgba(255, 255, 255, 0.4);
+          color: rgba(255, 255, 255, 0.55);
           margin-top: 6px;
         }
 
-        /* Pill cluster */
-        .ig-cluster {
-          display: flex;
-          gap: 4px;
-          align-items: stretch;
-        }
-        .ig-cluster-col {
+        .w-vitc { width: 130px; }
+        .w-na   { width: 160px; }
+        .w-cl   { width: 230px; }
+        .w-tau  { width: 360px; }
+        .w-ca   { width: 140px; }
+        .w-mg   { width: 130px; }
+        .w-k    { width: 200px; }
+        .w-gly  { width: 218px; }
+
+        /* ── Vitamin cluster (exact spec) ──────────────────────────── */
+        .cluster {
+          width: 170px;
+          height: 150px;
           display: flex;
           flex-direction: column;
           gap: 4px;
-          flex: 1 0 auto;
+          align-items: stretch;
         }
-        .ig-cluster-col--small { justify-content: center; }
-
-        .ig-pill {
+        .pill-row { display: flex; gap: 4px; }
+        .pill-row-lg { height: 64px; }
+        .pill-row-md { height: 46px; }
+        .pill-row-sm { height: 28px; justify-content: center; }
+        .pill {
           flex: 1;
           border-radius: 999px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 14px;
-          font-weight: 500;
+          font-family: var(--font-mono);
+          font-weight: 700;
           position: relative;
+          overflow: visible;
           cursor: default;
-          color: rgba(255, 255, 255, 0.9);
-          transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
+          background: #26091C;
+          border: 1px solid #150610;
+          color: rgba(255, 255, 255, 0.92);
+          transition: transform 0.2s ease, border-color 0.2s ease;
         }
-        .ig-pill--small {
-          flex: 0 0 46px;
-          height: 46px;
-          font-size: 12px;
+        .pill-label { position: relative; z-index: 1; }
+        .pill-row-lg .pill { font-size: 16px; }
+        .pill-row-md .pill { font-size: 13px; }
+        .pill-tiny { flex: 0 0 56px; font-size: 10px; }
+
+        /* ── Gradient swirl (clipped inner layer) ──────────────────── */
+        .ig-glow {
+          position: absolute;
+          inset: 0;
+          z-index: 0;
+          border-radius: inherit;
+          overflow: hidden;                /* clips the swirl to the tile */
+          pointer-events: none;
+        }
+        .ig-glow::before {
+          content: '';
+          position: absolute;
+          inset: -25%;
+          background:
+            radial-gradient(circle at 30% 30%, #F0567F 0%, transparent 52%),
+            radial-gradient(circle at 72% 42%, #C46AD6 0%, transparent 50%),
+            radial-gradient(circle at 50% 80%, #E7C24C 0%, transparent 54%);
+          filter: blur(16px) saturate(1.1);
+          opacity: 0.72;
+          will-change: transform;
+          animation: ig-swirl var(--dur, 16s) linear var(--delay, 0s) infinite;
+          animation-direction: var(--dir, normal);
+        }
+        @keyframes ig-swirl {
+          0%   { transform: rotate(0deg)   scale(1.05); }
+          50%  { transform: rotate(180deg) scale(1.18); }
+          100% { transform: rotate(360deg) scale(1.05); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .ig-glow::before { animation: none; transform: scale(1.1); }
         }
 
-        /* ── Category palette — solid fills ──────────────────────── */
-        .ig-vitamin {
-          background: rgb(180, 130, 80);
-          border: 1px solid rgb(180, 130, 80);
+        .box:hover, .pill:hover {
+          transform: scale(1.015);
+          border-color: color-mix(in srgb, #FFFFFF 22%, #150610);
         }
-        .ig-vitamin:hover { background: rgb(200, 150, 95); border-color: rgb(200, 150, 95); }
-
-        .ig-mineral {
-          background: rgb(180, 100, 80);
-          border: 1px solid rgb(180, 100, 80);
-        }
-        .ig-mineral:hover { background: rgb(200, 120, 95); border-color: rgb(200, 120, 95); }
-
-        .ig-amino {
-          background: rgb(180, 80, 140);
-          border: 1px solid rgb(180, 80, 140);
-        }
-        .ig-amino:hover { background: rgb(200, 95, 160); border-color: rgb(200, 95, 160); }
-
-        .ig-box:hover, .ig-pill:hover {
-          transform: scale(1.02);
+        .box:hover .ig-glow::before,
+        .pill:hover .ig-glow::before {
+          opacity: 0.92;
+          filter: blur(14px) brightness(1.15) saturate(1.15);
         }
 
-        /* ── Tooltip ─────────────────────────────────────────────── */
-        .ig-box[data-tooltip]::after,
-        .ig-pill[data-tooltip]::after {
+        /* ── Tooltip (escapes the tile; wraps so it never runs off) ── */
+        .box[data-tooltip]::after,
+        .pill[data-tooltip]::after {
           content: attr(data-tooltip);
           position: absolute;
           bottom: calc(100% + 10px);
           left: 50%;
           transform: translateX(-50%) translateY(4px);
-          background: rgba(255, 255, 255, 0.95);
-          -webkit-backdrop-filter: blur(8px);
-          backdrop-filter: blur(8px);
+          width: max-content;
+          max-width: 240px;
+          background: rgba(255, 255, 255, 0.97);
           color: #1a0a12;
-          font-family: var(--font-inter), 'Inter', system-ui, sans-serif;
+          font-family: var(--font-mono);
           font-size: 12px;
           font-weight: 500;
-          letter-spacing: 0;
-          padding: 8px 16px;
+          line-height: 1.4;
+          text-align: center;
+          padding: 8px 14px;
           border-radius: 8px;
-          white-space: nowrap;
-          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
           opacity: 0;
           visibility: hidden;
           transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
           pointer-events: none;
           z-index: 50;
         }
-        .ig-box[data-tooltip]::before,
-        .ig-pill[data-tooltip]::before {
+        .box[data-tooltip]::before,
+        .pill[data-tooltip]::before {
           content: '';
           position: absolute;
           bottom: calc(100% + 4px);
@@ -342,17 +383,17 @@ export default function IngredientGrid() {
           height: 0;
           border-left: 6px solid transparent;
           border-right: 6px solid transparent;
-          border-top: 6px solid rgba(255, 255, 255, 0.95);
+          border-top: 6px solid rgba(255, 255, 255, 0.97);
           opacity: 0;
           visibility: hidden;
           transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s ease;
           pointer-events: none;
           z-index: 50;
         }
-        .ig-box[data-tooltip]:hover::after,
-        .ig-pill[data-tooltip]:hover::after,
-        .ig-box[data-tooltip]:hover::before,
-        .ig-pill[data-tooltip]:hover::before {
+        .box[data-tooltip]:hover::after,
+        .pill[data-tooltip]:hover::after,
+        .box[data-tooltip]:hover::before,
+        .pill[data-tooltip]:hover::before {
           opacity: 1;
           visibility: visible;
           transform: translateX(-50%) translateY(0);
