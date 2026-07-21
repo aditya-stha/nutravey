@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { Suspense } from "react";
 import { verifyOrder } from "@/lib/order-token";
+import { getOrderFulfillment } from "@/lib/shopify-admin";
 import SystemPage from "@/components/SystemPage";
 
 export const metadata: Metadata = {
@@ -13,6 +15,69 @@ export const metadata: Metadata = {
    Reached from the confirmation email's signed link. Shopify's checkout
    finishes the transaction; this page carries the brand past it — summary,
    live tracking link, and the paths back into the ritual. */
+
+/* Admin displayFulfillmentStatus → brand voice. Unmapped values render
+   nothing rather than leaking enum names. */
+const STATUS_COPY: Record<string, string> = {
+  UNFULFILLED: "Preparing",
+  PENDING_FULFILLMENT: "Preparing",
+  SUBMITTED: "Preparing",
+  SCHEDULED: "Preparing",
+  ON_HOLD: "Preparing",
+  CONFIRMED: "Preparing",
+  LABEL_PRINTED: "Preparing to ship",
+  LABEL_PURCHASED: "Preparing to ship",
+  PARTIALLY_FULFILLED: "Partially shipped",
+  FULFILLED: "Shipped",
+  MARKED_AS_FULFILLED: "Shipped",
+  IN_TRANSIT: "In transit",
+  OUT_FOR_DELIVERY: "Out for delivery",
+  ATTEMPTED_DELIVERY: "Delivery attempted",
+  DELIVERED: "Delivered",
+};
+
+/* Streams in after first paint; renders nothing until Admin access is
+   configured (read_orders) or for pre-orderId tokens. */
+async function LiveStatus({ orderId }: { orderId: string }) {
+  const live = await getOrderFulfillment(orderId);
+  const label = live
+    ? live.cancelled
+      ? "Canceled"
+      : STATUS_COPY[live.status]
+    : undefined;
+  if (!label) return null;
+  const tracked = live!.tracking.find((t) => t.url);
+  return (
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "baseline",
+        paddingBottom: "14px",
+        marginBottom: "2px",
+        borderBottom: "0.4px solid var(--color-rule)",
+      }}
+    >
+      <span className="mono-label" style={{ color: "var(--color-ink-muted)" }}>
+        Status
+      </span>
+      <span
+        className="mono-body"
+        style={{ fontSize: "13px", color: "var(--color-ink)" }}
+      >
+        {label}
+        {tracked && (
+          <>
+            {" · "}
+            <a href={tracked.url} style={{ textDecoration: "underline" }}>
+              {tracked.number ?? "Track"}
+            </a>
+          </>
+        )}
+      </span>
+    </div>
+  );
+}
 
 export default async function OrderPage({
   searchParams,
@@ -89,6 +154,11 @@ export default async function OrderPage({
           textAlign: "left",
         }}
       >
+        {order.orderId && (
+          <Suspense fallback={null}>
+            <LiveStatus orderId={order.orderId} />
+          </Suspense>
+        )}
         <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
           {order.items.map((item) => (
             <li

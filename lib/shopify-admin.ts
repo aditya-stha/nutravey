@@ -97,6 +97,127 @@ export async function adminGraphQL<T>(
   return json.data ?? null;
 }
 
+/* ─── Live order status ─────────────────────────────────────────────────────
+   Fresh fulfillment state for the owned /order page, looked up by the Admin
+   GID signed into the order token. Requires the read_orders scope — until
+   granted, adminGraphQL nulls out and the page falls back to the signed
+   snapshot alone. */
+
+export interface OrderFulfillment {
+  /** Admin displayFulfillmentStatus enum, e.g. UNFULFILLED, IN_TRANSIT. */
+  status: string;
+  cancelled: boolean;
+  tracking: Array<{ number?: string; url?: string; company?: string }>;
+}
+
+interface OrderStatusResponse {
+  order: {
+    displayFulfillmentStatus: string;
+    cancelledAt: string | null;
+    fulfillments: Array<{
+      trackingInfo: Array<{
+        number: string | null;
+        url: string | null;
+        company: string | null;
+      }>;
+    }>;
+  } | null;
+}
+
+export async function getOrderFulfillment(
+  orderId: string,
+): Promise<OrderFulfillment | null> {
+  if (!/^gid:\/\/shopify\/Order\/\d+$/.test(orderId)) return null;
+  const data = await adminGraphQL<OrderStatusResponse>(
+    /* GraphQL */ `
+      query orderStatus($id: ID!) {
+        order(id: $id) {
+          displayFulfillmentStatus
+          cancelledAt
+          fulfillments(first: 5) {
+            trackingInfo(first: 5) {
+              number
+              url
+              company
+            }
+          }
+        }
+      }
+    `,
+    { id: orderId },
+  );
+  const order = data?.order;
+  if (!order) return null;
+  return {
+    status: order.displayFulfillmentStatus,
+    cancelled: Boolean(order.cancelledAt),
+    tracking: order.fulfillments.flatMap((f) =>
+      f.trackingInfo.map((t) => ({
+        number: t.number ?? undefined,
+        url: t.url ?? undefined,
+        company: t.company ?? undefined,
+      })),
+    ),
+  };
+}
+
+/* ─── Account activation bridge ─────────────────────────────────────────────
+   Customers created back-office (waitlist tagging, checkout, admin adds)
+   exist without a password, so classic sign-in/sign-up dead-ends on them.
+   These two calls let the auth flow detect that state and mint an
+   activation URL the customer redeems on our own /account/activate page.
+   Requires read/write_customers — until granted, both return null and the
+   auth flow falls back to its generic copy. */
+
+export async function findCustomerState(
+  email: string,
+): Promise<{ id: string; state: string } | null> {
+  const data = await adminGraphQL<{
+    customers: { nodes: Array<{ id: string; state: string }> };
+  }>(
+    /* GraphQL */ `
+      query customerState($q: String!) {
+        customers(first: 1, query: $q) {
+          nodes { id state }
+        }
+      }
+    `,
+    { q: `email:${email}` },
+  );
+  return data?.customers.nodes[0] ?? null;
+}
+
+export async function generateAccountActivationUrl(
+  customerId: string,
+): Promise<string | null> {
+  const data = await adminGraphQL<{
+    customerGenerateAccountActivationUrl: {
+      accountActivationUrl: string | null;
+      userErrors: Array<{ message: string }>;
+    };
+  }>(
+    /* GraphQL */ `
+      mutation activationUrl($customerId: ID!) {
+        customerGenerateAccountActivationUrl(customerId: $customerId) {
+          accountActivationUrl
+          userErrors { message }
+        }
+      }
+    `,
+    { customerId },
+  );
+  const result = data?.customerGenerateAccountActivationUrl;
+  if (!result?.accountActivationUrl) {
+    if (result?.userErrors.length) {
+      log.warn("activation_url_failed", {
+        errors: result.userErrors.map((e) => e.message),
+      });
+    }
+    return null;
+  }
+  return result.accountActivationUrl;
+}
+
 /* ─── Order request stamping ────────────────────────────────────────────────
    Makes /account cancel/change requests visible in the Shopify backend:
    tags the order (cancel-requested / change-requested) and appends the

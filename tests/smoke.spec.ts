@@ -206,6 +206,9 @@ test("order page verifies signed tokens and rejects forgeries", async ({
       currency: "USD",
       items: ["Electrolytes Powder Mix"],
       statusUrl: "https://nutravey.myshopify.com/orders/abc",
+      // Exercises the live-status branch; Admin is unconfigured in tests,
+      // so the page must still render from the signed snapshot alone.
+      orderId: "gid://shopify/Order/1001",
       ts: Date.now(),
     }),
   );
@@ -249,4 +252,48 @@ test("order requests require a customer session", async ({ request }) => {
     data: { order: "#1001", kind: "cancel", message: "" },
   });
   expect(res.status()).toBe(401);
+});
+
+test("activation page rejects missing and foreign links", async ({ page }) => {
+  await page.goto("/account/activate");
+  await expect(page.getByText("This activation link isn't valid.")).toBeVisible();
+
+  const foreign = encodeURIComponent("https://evil.example/account/activate/1/tok");
+  await page.goto(`/account/activate?t=${foreign}`);
+  await expect(page.getByText("This activation link isn't valid.")).toBeVisible();
+});
+
+test("activation redemption rejects a foreign activation URL", async ({
+  request,
+}) => {
+  const res = await request.post("/api/customer/session", {
+    data: {
+      mode: "activate",
+      activationUrl: "https://evil.example/account/activate/1/tok",
+      password: "longenough",
+    },
+  });
+  // 400 when live (foreign URL), 503 when Shopify is unconfigured — never a session.
+  expect([400, 503]).toContain(res.status());
+});
+
+test("reset page rejects missing and foreign links", async ({ page }) => {
+  await page.goto("/account/reset");
+  await expect(page.getByText("This reset link isn't valid.")).toBeVisible();
+
+  const foreign = encodeURIComponent("https://evil.example/account/reset/1/tok");
+  await page.goto(`/account/reset?t=${foreign}`);
+  await expect(page.getByText("This reset link isn't valid.")).toBeVisible();
+});
+
+test("reset redemption rejects a foreign reset URL", async ({ request }) => {
+  const res = await request.post("/api/customer/session", {
+    data: {
+      mode: "reset",
+      resetUrl: "https://evil.example/account/reset/1/tok",
+      password: "longenough",
+    },
+  });
+  // 400 when live (foreign URL), 503 when Shopify is unconfigured — never a session.
+  expect([400, 503]).toContain(res.status());
 });

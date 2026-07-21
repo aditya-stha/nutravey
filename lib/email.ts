@@ -143,6 +143,57 @@ export async function sendOrderEmail({
   }
 }
 
+/** Activation link for a customer record that exists without a password
+ *  (waitlist/checkout/admin-created). The link must ONLY ever travel by
+ *  email to the address on the record — returning it to the requester
+ *  would hand account takeover to anyone who knows the email. */
+export async function sendActivationEmail({
+  to,
+  activateUrl,
+}: {
+  to: string;
+  activateUrl: string;
+}): Promise<boolean> {
+  const key = process.env.RESEND_API_KEY;
+  const from = process.env.RESEND_FROM;
+  if (!key || !from) {
+    log.warn("activation_email_skipped", { reason: "resend not configured" });
+    return false;
+  }
+
+  const html = `
+  <div style="margin:0;padding:40px 16px;background:#FAFAFA;font-family:'Courier New',monospace;color:#3D1322;">
+    <div style="max-width:480px;margin:0 auto;">
+      <p style="font-size:11px;letter-spacing:0.18em;text-transform:uppercase;opacity:0.6;margin:0 0 24px;">Nutravey — Account Activation</p>
+      <p style="font-size:22px;font-weight:600;margin:0 0 16px;">Your account is waiting — it just needs a password.</p>
+      <p style="font-size:13px;line-height:1.7;margin:0 0 24px;">
+        This email is already on our books, but no password was ever set for
+        it. Choose one at the link below and your account — orders, passes,
+        the lot — opens up.
+      </p>
+      <a href="${activateUrl}" style="display:inline-block;background:#3D1322;color:#FAFAFA;padding:14px 28px;font-size:12px;letter-spacing:0.1em;text-transform:uppercase;text-decoration:none;">Set your password →</a>
+      <p style="font-size:11px;opacity:0.5;margin-top:36px;">Didn't try to sign in at Nutravey? You can ignore this — nothing changes without the link.</p>
+    </div>
+  </div>`;
+
+  try {
+    const res = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from, to, subject: "Activate your Nutravey account", html }),
+    });
+    if (!res.ok) {
+      log.error("activation_email_failed", { status: res.status });
+      return false;
+    }
+    log.info("activation_email_sent", {});
+    return true;
+  } catch (err) {
+    log.error("activation_email_failed", { message: String(err) });
+    return false;
+  }
+}
+
 /** Tells a referrer their code was used and delivers their reward code. */
 export async function sendRewardEmail({
   to,

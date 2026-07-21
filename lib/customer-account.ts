@@ -1,7 +1,16 @@
 import "server-only";
 import { cookies } from "next/headers";
 import { storefrontQuery } from "@/lib/shopify";
-import { isShopifyConfigured } from "@/lib/shopify-config";
+import {
+  isShopifyConfigured,
+  SHOPIFY_STORE_DOMAIN,
+  SHOPIFY_PRIMARY_DOMAIN,
+} from "@/lib/shopify-config";
+import {
+  findCustomerState,
+  generateAccountActivationUrl,
+} from "@/lib/shopify-admin";
+import { sendActivationEmail } from "@/lib/email";
 import { log } from "@/lib/log";
 
 /* ─── Customer accounts — classic (fully headless) ──────────────────────────
@@ -42,11 +51,61 @@ function firstError(errs: UserErrors["customerUserErrors"]): string | null {
   return errs.length ? errs[0].message : null;
 }
 
+export interface AuthResult {
+  token?: string;
+  expiresAt?: string;
+  error?: string;
+  /** The email exists without a password; an activation link was emailed. */
+  activationSent?: boolean;
+}
+
+/** Guards Shopify URLs we redeem server-side: only our own store's account
+ *  activation/reset paths count — anything else is a smuggled foreign URL.
+ *  Shopify mints these on the primary domain, but the .myshopify host is
+ *  accepted too. */
+export function isOurAccountUrl(
+  raw: string,
+  kind: "activate" | "reset",
+): boolean {
+  try {
+    const url = new URL(raw);
+    return (
+      url.protocol === "https:" &&
+      (url.hostname === SHOPIFY_STORE_DOMAIN ||
+        url.hostname === SHOPIFY_PRIMARY_DOMAIN) &&
+      url.pathname.startsWith(`/account/${kind}/`)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/* ─── Activation bridge ─────────────────────────────────────────────────────
+   A customer created back-office (waitlist, checkout, admin) has no password:
+   sign-up collides ("taken") and sign-in can't ever succeed ("unidentified").
+   When Admin access confirms that state, we mint an activation URL and email
+   it — the customer sets a password on our own /account/activate page. The
+   link travels by email only; the record's owner holds the inbox. */
+async function tryActivationBridge(
+  email: string,
+  origin: string,
+): Promise<boolean> {
+  const customer = await findCustomerState(email);
+  if (!customer || customer.state === "ENABLED") return false;
+  const activationUrl = await generateAccountActivationUrl(customer.id);
+  if (!activationUrl) return false;
+  const ownUrl = `${origin}/account/activate?t=${encodeURIComponent(activationUrl)}`;
+  const sent = await sendActivationEmail({ to: email, activateUrl: ownUrl });
+  log[sent ? "info" : "warn"]("activation_bridge", { sent, state: customer.state });
+  return sent;
+}
+
 /** email+password → access token. Returns the token or a user-facing error. */
 export async function signIn(
   email: string,
   password: string,
-): Promise<{ token?: string; expiresAt?: string; error?: string }> {
+  origin?: string,
+): Promise<AuthResult> {
   try {
     const data = await storefrontQuery<{
       customerAccessTokenCreate: UserErrors & {
@@ -66,11 +125,12 @@ export async function signIn(
     );
     const result = data.customerAccessTokenCreate;
     if (!result.customerAccessToken) {
-      return {
-        error:
-          firstError(result.customerUserErrors) ??
-          "Email or password didn't match.",
-      };
+      // "Unidentified customer" covers both wrong password and a
+      // password-less back-office record — bridge the second case.
+      if (origin && (await tryActivationBridge(email, origin))) {
+        return { activationSent: true };
+      }
+      return { error: "Email or password didn't match." };
     }
     return {
       token: result.customerAccessToken.accessToken,
@@ -87,7 +147,8 @@ export async function signUp(
   firstName: string,
   email: string,
   password: string,
-): Promise<{ token?: string; expiresAt?: string; error?: string }> {
+  origin?: string,
+): Promise<AuthResult> {
   try {
     const data = await storefrontQuery<{
       customerCreate: UserErrors & { customer: { id: string } | null };
@@ -104,10 +165,21 @@ export async function signUp(
       { noStore: true },
     );
     if (!data.customerCreate.customer) {
+      const errs = data.customerCreate.customerUserErrors;
+      const taken =
+        errs.some((e) => e.code === "TAKEN") ||
+        errs.some((e) => /taken|exists/i.test(e.message));
+      if (taken) {
+        if (origin && (await tryActivationBridge(email, origin))) {
+          return { activationSent: true };
+        }
+        return {
+          error:
+            "This email already has an account — sign in, or use Forgot password.",
+        };
+      }
       return {
-        error:
-          firstError(data.customerCreate.customerUserErrors) ??
-          "Couldn't create the account.",
+        error: firstError(errs) ?? "Couldn't create the account.",
       };
     }
     return signIn(email, password);
@@ -134,6 +206,95 @@ export async function recover(email: string): Promise<void> {
     );
   } catch (err) {
     log.warn("customer_recover_failed", { message: String(err) });
+  }
+}
+
+/** Redeems a Shopify activation URL with the customer's chosen password —
+ *  enables the account and signs them straight in. */
+export async function activateByUrl(
+  activationUrl: string,
+  password: string,
+): Promise<AuthResult> {
+  try {
+    const data = await storefrontQuery<{
+      customerActivateByUrl: UserErrors & {
+        customerAccessToken: { accessToken: string; expiresAt: string } | null;
+      };
+    }>(
+      /* GraphQL */ `
+        mutation activate($activationUrl: URL!, $password: String!) {
+          customerActivateByUrl(
+            activationUrl: $activationUrl
+            password: $password
+          ) {
+            customerAccessToken { accessToken expiresAt }
+            customerUserErrors { code message }
+          }
+        }
+      `,
+      { activationUrl, password },
+      { noStore: true },
+    );
+    const result = data.customerActivateByUrl;
+    if (!result.customerAccessToken) {
+      log.warn("customer_activation_rejected", {
+        errors: result.customerUserErrors.map((e) => e.code ?? e.message),
+      });
+      return {
+        error:
+          "This activation link has expired or was already used — sign in, or use Forgot password.",
+      };
+    }
+    return {
+      token: result.customerAccessToken.accessToken,
+      expiresAt: result.customerAccessToken.expiresAt,
+    };
+  } catch (err) {
+    log.error("customer_activation_failed", { message: String(err) });
+    return { error: "Activation is briefly unavailable — try again." };
+  }
+}
+
+/** Redeems a Shopify password-reset URL (from the recovery email) with the
+ *  customer's new password — resets it and signs them straight in. */
+export async function resetByUrl(
+  resetUrl: string,
+  password: string,
+): Promise<AuthResult> {
+  try {
+    const data = await storefrontQuery<{
+      customerResetByUrl: UserErrors & {
+        customerAccessToken: { accessToken: string; expiresAt: string } | null;
+      };
+    }>(
+      /* GraphQL */ `
+        mutation reset($resetUrl: URL!, $password: String!) {
+          customerResetByUrl(resetUrl: $resetUrl, password: $password) {
+            customerAccessToken { accessToken expiresAt }
+            customerUserErrors { code message }
+          }
+        }
+      `,
+      { resetUrl, password },
+      { noStore: true },
+    );
+    const result = data.customerResetByUrl;
+    if (!result.customerAccessToken) {
+      log.warn("customer_reset_rejected", {
+        errors: result.customerUserErrors.map((e) => e.code ?? e.message),
+      });
+      return {
+        error:
+          "This reset link has expired or was already used — request a fresh one from Forgot password.",
+      };
+    }
+    return {
+      token: result.customerAccessToken.accessToken,
+      expiresAt: result.customerAccessToken.expiresAt,
+    };
+  } catch (err) {
+    log.error("customer_reset_failed", { message: String(err) });
+    return { error: "Password reset is briefly unavailable — try again." };
   }
 }
 

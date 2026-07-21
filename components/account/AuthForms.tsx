@@ -17,7 +17,7 @@ export default function AuthForms() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [state, setState] = useState<
-    "idle" | "busy" | "recover-sent" | "error"
+    "idle" | "busy" | "recover-sent" | "activation-sent" | "error"
   >("idle");
   const [error, setError] = useState("");
 
@@ -32,10 +32,15 @@ export default function AuthForms() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode, email, password, firstName }),
       });
-      const json: { ok?: boolean; error?: string } = await res.json();
+      const json: { ok?: boolean; error?: string; activationSent?: boolean } =
+        await res.json();
       if (!res.ok || !json.ok) {
         setError(json.error ?? "Try again.");
         setState("error");
+        return;
+      }
+      if (json.activationSent) {
+        setState("activation-sent");
         return;
       }
       if (mode === "recover") {
@@ -48,6 +53,16 @@ export default function AuthForms() {
       setState("error");
     }
   };
+
+  if (state === "activation-sent") {
+    return (
+      <p className="mono-body" style={{ fontSize: "14px", color: "var(--color-ink-muted)", maxWidth: "420px" }}>
+        This email is already on our books — reserved before a password was
+        ever set. We&rsquo;ve sent an activation link: choose your password
+        there and your account opens up.
+      </p>
+    );
+  }
 
   if (state === "recover-sent") {
     return (

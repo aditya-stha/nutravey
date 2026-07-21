@@ -4,13 +4,17 @@ import {
   signIn,
   signUp,
   recover,
+  activateByUrl,
+  resetByUrl,
+  isOurAccountUrl,
   TOKEN_COOKIE,
 } from "@/lib/customer-account";
 import { createRateLimiter, clientIp } from "@/lib/rate-limit";
 import { log } from "@/lib/log";
 
 /* ─── Customer session ──────────────────────────────────────────────────────
-   POST { mode: "login" | "register" | "recover", email, password?, firstName? }
+   POST { mode: "login" | "register" | "recover" | "activate" | "reset",
+          email?, password?, firstName?, activationUrl?, resetUrl? }
    Sets the httpOnly session cookie on success. Rate-limited per IP —
    an auth endpoint is a password-guessing surface. */
 
@@ -36,6 +40,8 @@ export async function POST(request: NextRequest) {
     email?: unknown;
     password?: unknown;
     firstName?: unknown;
+    activationUrl?: unknown;
+    resetUrl?: unknown;
   };
   try {
     body = (await request.json()) as typeof body;
@@ -49,8 +55,11 @@ export async function POST(request: NextRequest) {
   const password = typeof body.password === "string" ? body.password : "";
   const firstName =
     typeof body.firstName === "string" ? body.firstName.trim().slice(0, 80) : "";
+  const activationUrl =
+    typeof body.activationUrl === "string" ? body.activationUrl : "";
+  const resetUrl = typeof body.resetUrl === "string" ? body.resetUrl : "";
 
-  if (!EMAIL_RE.test(email)) {
+  if (mode !== "activate" && mode !== "reset" && !EMAIL_RE.test(email)) {
     return NextResponse.json(
       { ok: false, error: "That email doesn't look right." },
       { status: 400 },
@@ -62,7 +71,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true });
   }
 
-  if (mode !== "login" && mode !== "register") {
+  if (
+    mode !== "login" &&
+    mode !== "register" &&
+    mode !== "activate" &&
+    mode !== "reset"
+  ) {
     return NextResponse.json({ ok: false }, { status: 400 });
   }
   if (password.length < 8) {
@@ -77,12 +91,33 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
+  if (mode === "activate" && !isOurAccountUrl(activationUrl, "activate")) {
+    return NextResponse.json(
+      { ok: false, error: "This activation link isn't valid." },
+      { status: 400 },
+    );
+  }
+  if (mode === "reset" && !isOurAccountUrl(resetUrl, "reset")) {
+    return NextResponse.json(
+      { ok: false, error: "This reset link isn't valid." },
+      { status: 400 },
+    );
+  }
 
+  const origin = request.nextUrl.origin;
   const result =
     mode === "login"
-      ? await signIn(email, password)
-      : await signUp(firstName, email, password);
+      ? await signIn(email, password, origin)
+      : mode === "register"
+        ? await signUp(firstName, email, password, origin)
+        : mode === "activate"
+          ? await activateByUrl(activationUrl, password)
+          : await resetByUrl(resetUrl, password);
 
+  if (result.activationSent) {
+    log.info("customer_activation_sent", {});
+    return NextResponse.json({ ok: true, activationSent: true });
+  }
   if (!result.token) {
     return NextResponse.json(
       { ok: false, error: result.error ?? "Try again." },

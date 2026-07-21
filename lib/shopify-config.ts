@@ -9,6 +9,12 @@ export const SHOPIFY_STORE_DOMAIN =
 export const SHOPIFY_STOREFRONT_TOKEN =
   process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_TOKEN ?? "";
 
+/** The store's customer-facing primary domain. Shopify mints account
+ *  activation and password-reset URLs on this host, not the .myshopify
+ *  one — URL validation must accept both. */
+export const SHOPIFY_PRIMARY_DOMAIN =
+  process.env.NEXT_PUBLIC_SHOPIFY_PRIMARY_DOMAIN ?? "shop.nutravey.com";
+
 export const SHOPIFY_STOREFRONT_API_VERSION =
   process.env.NEXT_PUBLIC_SHOPIFY_STOREFRONT_API_VERSION ?? "2026-04";
 

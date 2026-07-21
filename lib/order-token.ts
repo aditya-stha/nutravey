@@ -18,6 +18,8 @@ export interface OrderPayload {
   items: string[];
   /** Shopify's live order-status URL (tracking, fulfillment). */
   statusUrl: string;
+  /** Admin GID (gid://shopify/Order/<id>) — absent on tokens issued before it was added. */
+  orderId?: string;
   ts: number;
 }
 

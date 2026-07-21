@@ -103,6 +103,7 @@ export async function POST(request: NextRequest) {
                 ? payload.order_status_url
                 : "",
             ts: Date.now(),
+            orderId: `gid://shopify/Order/${payload.id}`,
           });
           const orderUrl = `${request.nextUrl.origin}/order?t=${orderToken}`;
           await sendOrderEmail({
