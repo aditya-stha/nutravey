@@ -6,9 +6,8 @@
    totals, and the checkout URL all come from the hook. Must render inside
    <CartProvider> (mounted in the root layout). */
 
-import { unlockAndCheckout } from "@/lib/unlock-store";
 import Link from "next/link";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useCart, Money, Image } from "@shopify/hydrogen-react";
 import type {
   CartLine,
@@ -26,6 +25,7 @@ type Line = CartLine | ComponentizableCartLine;
 export default function CartPage() {
   const isPreLaunch = usePreLaunch();
   const {
+    id: cartId,
     lines,
     cost,
     checkoutUrl,
@@ -37,9 +37,51 @@ export default function CartPage() {
     discountCodesUpdate,
   } = useCart();
 
-   useEffect(() => {
-    if (checkoutUrl) console.log("Checkout URL:", checkoutUrl);
-  }, [checkoutUrl]);
+  /* Checkout is account-gated: the button reads a non-secret companion cookie
+     to know whether the shopper is signed in (the token itself stays
+     httpOnly, server-side only). */
+  const [signedIn, setSignedIn] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  useEffect(() => {
+    setSignedIn(
+      document.cookie.split("; ").some((c) => c.startsWith("nvy-auth=")),
+    );
+  }, []);
+
+  async function handleCheckout() {
+    if (!cartId || checkingOut) return;
+    setCheckingOut(true);
+    setCheckoutError(null);
+    track("begin_checkout", {
+      value: Number(cost?.subtotalAmount?.amount ?? 0),
+      currency: cost?.subtotalAmount?.currencyCode ?? "USD",
+      items: totalQuantity ?? 0,
+      source: "cart",
+    });
+    try {
+      const res = await fetch("/api/cart/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cartId }),
+      });
+      const json: { ok?: boolean; checkoutUrl?: string } = await res.json();
+      if (res.status === 401) {
+        // Not signed in / session expired — send to sign-in, return to cart.
+        window.location.href = "/account?redirect=/cart";
+        return;
+      }
+      if (!res.ok || !json.checkoutUrl) {
+        setCheckoutError("Couldn't start checkout. Try again.");
+        setCheckingOut(false);
+        return;
+      }
+      window.location.href = json.checkoutUrl;
+    } catch {
+      setCheckoutError("Couldn't reach checkout. Try again.");
+      setCheckingOut(false);
+    }
+  }
 
   /* Referral auto-apply: /r/<code> stores the code in a cookie; once the
      cart exists, apply it exactly once. Shopify validates the code — an
@@ -239,25 +281,34 @@ export default function CartPage() {
           Taxes and shipping calculated at checkout.
         </p>
 
-        {checkoutUrl && (
-          <a
-          href={checkoutUrl}
-          className="cart-checkout mono-cta"
-          aria-busy={busy}
-          onClick={async (e) => {
-            e.preventDefault();
-            track("begin_checkout", {
-              value: Number(cost?.subtotalAmount?.amount ?? 0),
-              currency: cost?.subtotalAmount?.currencyCode ?? "USD",
-              items: totalQuantity ?? 0,
-              source: "cart",
-            });
-            await unlockAndCheckout(checkoutUrl);
-          }}
+        {signedIn ? (
+          <button
+            type="button"
+            className="cart-checkout mono-cta"
+            aria-busy={busy || checkingOut}
+            disabled={busy || checkingOut || !cartId}
+            onClick={handleCheckout}
           >
-          {busy ? "Updating…" : "Checkout →"}
-          </a>
-       )}
+            {busy ? "Updating…" : checkingOut ? "One moment…" : "Checkout →"}
+          </button>
+        ) : (
+          <Link
+            href="/account?redirect=/cart"
+            className="cart-checkout mono-cta"
+          >
+            Sign in to checkout →
+          </Link>
+        )}
+
+        {checkoutError && (
+          <p
+            role="alert"
+            className="mono-body"
+            style={{ fontSize: "12px", color: "var(--color-strawberry)", marginBottom: "12px", textAlign: "center" }}
+          >
+            {checkoutError}
+          </p>
+        )}
 
         <Link href="/shop" className="cart-continue mono-cta">
           Continue shopping
@@ -417,10 +468,14 @@ function CartStyles() {
         background: var(--color-ink);
         color: var(--color-surface);
         letter-spacing: 0.08em;
+        border: none;
         border-radius: var(--radius-canvas);
+        cursor: pointer;
+        appearance: none;
         transition: opacity 200ms ease, transform 200ms ease;
       }
       .cart-checkout:hover { opacity: 0.88; transform: translateY(-1px); }
+      .cart-checkout:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
       .cart-continue { text-align: center; width: 100%; }
     `}</style>

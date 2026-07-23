@@ -92,7 +92,7 @@ export default function ProductDetail({
     }
   };
 
-  const { linesAdd, status, checkoutUrl } = useCart();
+  const { linesAdd, status } = useCart();
   const router = useRouter();
 
   /* After an Add to Cart, follow the shopper to the cart — but only once
@@ -146,10 +146,10 @@ export default function ProductDetail({
   function buyNow() {
     if (!addToCart(false)) return;
     track("begin_checkout", { item_id: product.slug, source: "buy_now" });
-    // `checkoutUrl` exists only once the cart has been created on the
-    // Storefront. If it's ready, jump straight to Shopify checkout; otherwise
-    // send the shopper to the cart page where the checkout link resolves.
-    window.location.href = checkoutUrl ?? "/cart";
+    // Checkout is account-gated and associates the cart with the signed-in
+    // customer, so all checkout goes through the cart page rather than
+    // jumping straight to the Shopify URL.
+    window.location.href = "/cart";
   }
 
   /* Sibling products for the "also explore" row at the bottom. */

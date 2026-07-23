@@ -139,6 +139,15 @@ export async function POST(request: NextRequest) {
     path: "/",
     maxAge,
   });
+  // Non-secret companion flag so client UI (e.g. the cart's checkout button)
+  // can tell it's signed in without ever touching the httpOnly token.
+  response.cookies.set("nvy-auth", "1", {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge,
+  });
   log.info("customer_session_created", { mode });
   return response;
 }
@@ -147,5 +156,6 @@ export async function POST(request: NextRequest) {
 export async function DELETE() {
   const response = NextResponse.json({ ok: true });
   response.cookies.set(TOKEN_COOKIE, "", { maxAge: 0, path: "/" });
+  response.cookies.set("nvy-auth", "", { maxAge: 0, path: "/" });
   return response;
 }

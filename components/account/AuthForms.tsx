@@ -6,12 +6,17 @@
    pages. */
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Mode = "login" | "register" | "recover";
 
 export default function AuthForms() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  // Same-origin relative paths only — never an open redirect.
+  const redirectParam = searchParams.get("redirect");
+  const redirectTo =
+    redirectParam && redirectParam.startsWith("/") ? redirectParam : null;
   const [mode, setMode] = useState<Mode>("login");
   const [firstName, setFirstName] = useState("");
   const [email, setEmail] = useState("");
@@ -47,7 +52,12 @@ export default function AuthForms() {
         setState("recover-sent");
         return;
       }
-      router.refresh(); // server re-renders /account with the session cookie
+      // Return to where checkout sent them (e.g. /cart), else re-render /account.
+      if (redirectTo) {
+        router.push(redirectTo);
+      } else {
+        router.refresh();
+      }
     } catch {
       setError("Connection hiccup — try again.");
       setState("error");
