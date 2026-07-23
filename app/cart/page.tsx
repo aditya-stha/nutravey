@@ -37,17 +37,11 @@ export default function CartPage() {
     discountCodesUpdate,
   } = useCart();
 
-  /* Checkout is account-gated: the button reads a non-secret companion cookie
-     to know whether the shopper is signed in (the token itself stays
-     httpOnly, server-side only). */
-  const [signedIn, setSignedIn] = useState(false);
+  /* Checkout isn't gated on sign-in. The route unlocks the password-protected
+     store and, if a session token happens to be present, attributes the order
+     to that customer; otherwise it's a plain guest checkout. */
   const [checkingOut, setCheckingOut] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-  useEffect(() => {
-    setSignedIn(
-      document.cookie.split("; ").some((c) => c.startsWith("nvy-auth=")),
-    );
-  }, []);
 
   async function handleCheckout() {
     if (!cartId || checkingOut) return;
@@ -66,11 +60,6 @@ export default function CartPage() {
         body: JSON.stringify({ cartId }),
       });
       const json: { ok?: boolean; checkoutUrl?: string } = await res.json();
-      if (res.status === 401) {
-        // Not signed in / session expired — send to sign-in, return to cart.
-        window.location.href = "/account?redirect=/cart";
-        return;
-      }
       if (!res.ok || !json.checkoutUrl) {
         setCheckoutError("Couldn't start checkout. Try again.");
         setCheckingOut(false);
@@ -281,24 +270,15 @@ export default function CartPage() {
           Taxes and shipping calculated at checkout.
         </p>
 
-        {signedIn ? (
-          <button
-            type="button"
-            className="cart-checkout mono-cta"
-            aria-busy={busy || checkingOut}
-            disabled={busy || checkingOut || !cartId}
-            onClick={handleCheckout}
-          >
-            {busy ? "Updating…" : checkingOut ? "One moment…" : "Checkout →"}
-          </button>
-        ) : (
-          <Link
-            href="/account?redirect=/cart"
-            className="cart-checkout mono-cta"
-          >
-            Sign in to checkout →
-          </Link>
-        )}
+        <button
+          type="button"
+          className="cart-checkout mono-cta"
+          aria-busy={busy || checkingOut}
+          disabled={busy || checkingOut || !cartId}
+          onClick={handleCheckout}
+        >
+          {busy ? "Updating…" : checkingOut ? "One moment…" : "Checkout →"}
+        </button>
 
         {checkoutError && (
           <p
