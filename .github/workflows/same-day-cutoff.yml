@@ -1,0 +1,39 @@
+# Turns Quiqup "Same Day Delivery" off at checkout after the cutoff and back
+# on at midnight, Dubai time (Shopify Basic can't time-limit a shipping rate).
+# Logic lives in scripts/same-day-cutoff.mjs; every run is idempotent.
+name: Same Day cutoff
+
+on:
+  schedule:
+    # Dubai is UTC+4: 09 UTC = 1pm, 11 UTC = 3pm, 20 UTC = midnight.
+    # Scheduled runs can start late or be dropped, so each switch gets a
+    # burst of runs, plus an hourly backstop.
+    - cron: "1,6,11,16 9,11,20 * * *"
+    - cron: "31 * * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: same-day-cutoff
+  cancel-in-progress: false
+
+jobs:
+  switch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Switch Same Day on or off
+        run: node scripts/same-day-cutoff.mjs
+        env:
+          SHOPIFY_STORE_DOMAIN: nutravey.myshopify.com
+          SHOPIFY_ADMIN_CLIENT_ID: ${{ secrets.SHOPIFY_ADMIN_CLIENT_ID }}
+          SHOPIFY_ADMIN_CLIENT_SECRET: ${{ secrets.SHOPIFY_ADMIN_CLIENT_SECRET }}
